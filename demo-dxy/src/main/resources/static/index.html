@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>微信机器人</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f4f6f8;
+            font-family: system-ui, sans-serif;
+        }
+        .panel {
+            width: 420px;
+            max-width: 92vw;
+            background: #fff;
+            border: 1px solid #d8dee6;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+        }
+        img {
+            width: 320px;
+            height: 320px;
+            max-width: 100%;
+            border: 1px solid #d8dee6;
+            border-radius: 8px;
+        }
+        .status {
+            margin-top: 16px;
+            font-size: 15px;
+            color: #1f2937;
+        }
+        button {
+            margin-top: 12px;
+            padding: 8px 18px;
+            font-size: 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #f8fafc;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #eef2f7;
+        }
+    </style>
+</head>
+<body>
+<div class="panel">
+    <h1>微信机器人</h1>
+    <img id="qr" src="/api/bot/qr.png" alt="登录二维码">
+    <div id="status" class="status">加载中...</div>
+    <button onclick="refresh()">刷新状态</button>
+</div>
+<script>
+    async function refresh() {
+        try {
+            const response = await fetch('/api/bot/status');
+            const data = await response.json();
+            document.getElementById('qr').src = '/api/bot/qr.png?t=' + Date.now();
+            document.getElementById('status').textContent = data.loggedIn
+                ? '已登录：' + (data.botId || '')
+                : '等待扫码登录...';
+        } catch (e) {
+            document.getElementById('status').textContent = '状态获取失败';
+        }
+    }
+    refresh();
+    setInterval(refresh, 3000);
+</script>
+</body>
+</html>

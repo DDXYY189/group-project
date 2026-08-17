@@ -1,4 +1,8 @@
 target/
+# 本地密钥配置，不要提交
+demo-dxy/src/main/resources/application-local.properties
+# 本地工具（FFmpeg 等），不要提交
+demo-dxy/tools/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
