@@ -34,6 +34,17 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>io.github.lith0924</groupId>
+			<artifactId>wechat-ilink-sdk</artifactId>
+			<version>2.3.3</version>
+		</dependency>
+		<!-- 二维码渲染（扫码登录用），无传递依赖 -->
+		<dependency>
+			<groupId>io.nayuki</groupId>
+			<artifactId>qrcodegen</artifactId>
+			<version>1.8.0</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
