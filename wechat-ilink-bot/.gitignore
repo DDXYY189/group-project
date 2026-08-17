@@ -1,0 +1,12 @@
+.idea/
+*.iml
+target/
+application-local.yml
+application-local.properties
+*.env
+*.key
+*.log
+logs/
+downloads/
+*.silk
+*.bin

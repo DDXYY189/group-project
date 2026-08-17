@@ -1,0 +1,6 @@
+llm:
+  api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  text-model: qwen-turbo
+  vision-model: qwen-vl-plus
+  asr-model: qwen-audio-turbo
+  base-url: https://dashscope.aliyuncs.com/api/v1
