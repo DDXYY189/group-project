@@ -104,6 +104,62 @@ public class DemoWkxApplication implements CommandLineRunner {
 						System.out.println("🤖 回复 [" + fromUserId + "]: " + reply);
 						client.sendText(fromUserId, reply);
 					}
+				} else if (item.getImage_item() != null) {
+					System.out.println("🖼️ 收到图片消息 [" + fromUserId + "]");
+					try {
+						byte[] imageBytes = client.downloadImageFromMessageItem(item);
+						System.out.println("📥 图片下载完成，大小: " + (imageBytes != null ? imageBytes.length : 0) + " bytes");
+						String description = llmService.describeImage(imageBytes);
+						System.out.println("🤖 图片分析结果 [" + fromUserId + "]: " + description);
+						client.sendText(fromUserId, description);
+						System.out.println("✅ 图片回复已发送给 " + fromUserId);
+					} catch (Exception ex) {
+						System.err.println("❌ 图片处理失败: " + ex.getMessage());
+						ex.printStackTrace();
+						try {
+							client.sendText(fromUserId, "收到你的图片，但处理时出错: " + ex.getMessage());
+						} catch (Exception ignored) {}
+					}
+				} else if (item.getVoice_item() != null) {
+					System.out.println("🔊 收到语音消息 [" + fromUserId + "]");
+					try {
+						// 1. 先检查SDK是否已转好文字
+						String voiceText = item.getVoice_item().getText();
+						System.out.println("📝 SDK文字: " + (voiceText != null ? voiceText : "(空)"));
+
+						// 2. 如果没有文字，下载语音并调用DashScope ASR
+						if (voiceText == null || voiceText.isEmpty()) {
+							byte[] voiceBytes = client.downloadVoiceFromMessageItem(item);
+							System.out.println("📥 语音下载完成，大小: " + (voiceBytes != null ? voiceBytes.length : 0) + " bytes");
+
+							Integer encodeType = item.getVoice_item().getEncode_type();
+							String format = (encodeType != null && encodeType == 4) ? "mp3" : "amr";
+							System.out.println("🎵 语音格式: " + format + ", encode_type: " + encodeType);
+
+							voiceText = llmService.transcribeAudio(voiceBytes, format);
+							System.out.println("📝 ASR识别结果: " + (voiceText != null ? voiceText : "(失败)"));
+						}
+
+						// 3. 用识别出的文字调用LLM
+						if (voiceText != null && !voiceText.isEmpty()) {
+							String reply = llmService.chat(fromUserId, voiceText);
+							String response = "📝 语音识别: " + voiceText + "\n\n🤖 回复: " + reply;
+							client.sendText(fromUserId, response);
+							System.out.println("✅ 语音对话回复已发送给 " + fromUserId);
+						} else {
+							client.sendText(fromUserId, "收到你的语音，但语音识别失败。请用文字发送消息，或直接说\"画 xxx\"生成图片。");
+							System.out.println("⚠ 语音识别失败，已通知用户");
+						}
+					} catch (Exception ex) {
+						System.err.println("❌ 语音处理失败: " + ex.getMessage());
+						ex.printStackTrace();
+						try {
+							client.sendText(fromUserId, "收到你的语音，但处理时出错: " + ex.getMessage());
+						} catch (Exception ignored) {}
+					}
+				} else {
+					System.out.println("❓ 收到未知类型消息 [" + fromUserId + "], item类型: " + item.getClass().getName());
+					System.out.println("   item内容: " + item.toString());
 				}
 			}
 		} catch (Exception e) {
