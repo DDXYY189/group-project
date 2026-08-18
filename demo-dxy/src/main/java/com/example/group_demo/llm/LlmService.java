@@ -62,6 +62,16 @@ public class LlmService {
         );
     }
 
+    public String chatRaw(String systemPrompt, String userText) {
+        return complete(
+            properties.getModel(),
+            List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userText)
+            )
+        );
+    }
+
     private String complete(String model, List<Map<String, Object>> messages) {
         if (!isConfigured()) {
             throw new IllegalStateException("LLM API key 未配置，请设置 DASHSCOPE_API_KEY");

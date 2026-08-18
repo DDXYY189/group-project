@@ -1,7 +1,12 @@
 package com.example.group_demo.bot;
 
 import com.example.group_demo.llm.LlmService;
+import com.example.group_demo.image.ImageService;
+import com.example.group_demo.intent.Intent;
+import com.example.group_demo.intent.ImageTextMerger;
+import com.example.group_demo.intent.IntentService;
 import com.example.group_demo.voice.VoiceService;
+import com.example.group_demo.weather.WeatherService;
 import com.github.wechat.ilink.sdk.ILinkClient;
 import com.github.wechat.ilink.sdk.core.login.LoginContext;
 import com.github.wechat.ilink.sdk.core.model.MessageItem;
@@ -26,9 +31,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class BotService implements ApplicationRunner {
@@ -38,6 +47,10 @@ public class BotService implements ApplicationRunner {
     private final ILinkClient client;
     private final LlmService llmService;
     private final VoiceService voiceService;
+    private final IntentService intentService;
+    private final ImageService imageService;
+    private final WeatherService weatherService;
+    private final ImageTextMerger imageTextMerger;
     private final ExecutorService messageExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "ilink-message-handler");
         thread.setDaemon(true);
@@ -48,10 +61,16 @@ public class BotService implements ApplicationRunner {
     private volatile String loginError;
     private volatile LoginContext loginContext;
 
-    public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService) {
+    public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService,
+                      IntentService intentService, ImageService imageService,
+                      WeatherService weatherService, ImageTextMerger imageTextMerger) {
         this.client = client;
         this.llmService = llmService;
         this.voiceService = voiceService;
+        this.intentService = intentService;
+        this.imageService = imageService;
+        this.weatherService = weatherService;
+        this.imageTextMerger = imageTextMerger;
     }
 
     @Override
@@ -102,17 +121,36 @@ public class BotService implements ApplicationRunner {
             }
             log.info("收到消息 from={} itemCount={} messageId={}",
                 fromUserId, items.size(), message.getMessage_id());
+            List<String> texts = new ArrayList<>();
+            MessageItem imageItem = null;
+            MessageItem voiceItem = null;
             for (MessageItem item : items) {
-                String reply = buildReply(item);
-                if (reply == null) {
-                    continue;
+                log.info("消息项 from={} itemType={}", fromUserId, item.getType());
+                TextItem textItem = item.getText_item();
+                if (textItem != null && textItem.getText() != null) {
+                    texts.add(textItem.getText());
                 }
-                try {
-                    client.sendTextWithTyping(fromUserId, reply, 800L);
-                    log.info("已回复 from={} reply={}", fromUserId, reply);
-                } catch (Exception e) {
-                    log.error("回复消息失败 fromUserId={}", fromUserId, e);
+                if (item.getImage_item() != null && imageItem == null) {
+                    imageItem = item;
                 }
+                if (item.getVoice_item() != null && voiceItem == null) {
+                    voiceItem = item;
+                }
+            }
+            try {
+                String combinedText = String.join(" ", texts).trim();
+                if (imageItem != null && !combinedText.isEmpty()) {
+                    handleImageWithText(fromUserId, imageItem, combinedText);
+                } else if (imageItem != null) {
+                    handleUserImage(fromUserId, imageItem);
+                } else if (voiceItem != null) {
+                    handleUserVoice(fromUserId, voiceItem);
+                } else if (!combinedText.isEmpty()) {
+                    handleUserText(fromUserId, combinedText);
+                }
+            } catch (Exception e) {
+                log.error("处理消息失败 fromUserId={}", fromUserId, e);
+                safeSendText(fromUserId, "消息处理失败：" + e.getMessage());
             }
         }
     }
@@ -126,21 +164,157 @@ public class BotService implements ApplicationRunner {
         return from != null && from.equals(context.getBotId());
     }
 
-    private String buildReply(MessageItem item) {
-        TextItem textItem = item.getText_item();
-        if (textItem != null && textItem.getText() != null) {
-            return replyToText(textItem.getText());
+    private void handleUserText(String fromUserId, String userText) {
+        if (userText.contains("文件测试")) {
+            sendFileTest(fromUserId);
+            return;
         }
-        if (item.getImage_item() != null) {
-            return replyToImage(item);
+        if (userText.contains("天气")) {
+            String location = extractLocation(userText);
+            try {
+                safeSendText(fromUserId, weatherService.getWeatherText(location));
+                return;
+            } catch (Exception e) {
+                log.warn("天气查询失败，走普通回复 location={}", location, e);
+            }
         }
-        if (item.getVoice_item() != null) {
-            return replyToVoice(item);
+        Optional<ImageTextMerger.Pending> merged = imageTextMerger.tryMergeText(fromUserId, userText);
+        if (merged.isPresent()) {
+            ImageTextMerger.Pending pending = merged.get();
+            handleImageAndText(fromUserId, userText, pending.imageBytes(), pending.fileName());
+            return;
         }
-        return null;
+        if (looksLikeImageUnderstanding(userText)) {
+            safeSendText(fromUserId, "好的，请把图片发给我，我来帮你识别。");
+            return;
+        }
+        Intent intent = intentService.classify(userText);
+        if (intent == null || intent.action() == null) {
+            safeSendText(fromUserId, replyToText(userText));
+            return;
+        }
+        switch (intent.action()) {
+            case "voice" -> sendVoiceReply(fromUserId, replyToText(cleanInstruction(userText)));
+            case "image" -> sendImageReply(fromUserId,
+                intent.imagePrompt() != null ? intent.imagePrompt() : userText,
+                intent.reply() != null ? intent.reply() : "图片生成完成");
+            default -> safeSendText(fromUserId,
+                intent.reply() != null ? intent.reply() : replyToText(userText));
+        }
     }
 
-    private String replyToVoice(MessageItem item) {
+    private String cleanInstruction(String userText) {
+        String text = userText == null ? "" : userText;
+        String[] phrases = {
+            "用语音回复我", "用语音回复", "语音回复我", "语音回复",
+            "用语音回答我", "用语音回答", "语音回答我", "语音回答",
+            "用语音来回复", "用语音来回答", "语音回"
+        };
+        for (String phrase : phrases) {
+            text = text.replace(phrase, "");
+        }
+        text = text.replaceAll("[，。！？、,.!?\\s]+$", "").trim();
+        return text.isBlank() ? userText : text;
+    }
+
+    private boolean looksLikeImageUnderstanding(String text) {
+        boolean hasImageWord = text != null && text.contains("图");
+        boolean hasAction = containsAny(text, "识别", "看看", "看一下", "描述", "解读", "帮我看看", "这是什么");
+        return hasImageWord && hasAction;
+    }
+
+    private boolean containsAny(String text, String... keys) {
+        if (text == null) {
+            return false;
+        }
+        for (String key : keys) {
+            if (text.contains(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String extractLocation(String text) {
+        String cleaned = text == null ? "" : text;
+        String[] words = {
+            "今天", "明天", "后天", "昨天", "现在", "当前", "查一下", "帮我",
+            "看看", "怎么样", "如何", "是什么", "什么", "呢", "啊", "呀", "吗", "的"
+        };
+        for (String word : words) {
+            cleaned = cleaned.replace(word, "");
+        }
+        Matcher matcher = Pattern.compile("([\\u4e00-\\u9fa5A-Za-z]{1,8}?)(?:省|市)?天气")
+            .matcher(cleaned);
+        if (matcher.find()) {
+            String city = matcher.group(1).trim();
+            if (!city.isEmpty()) {
+                return city;
+            }
+        }
+        return "北京";
+    }
+
+    private void sendFileTest(String fromUserId) {
+        try {
+            byte[] fileBytes = "iLink 文件发送测试 OK".getBytes(StandardCharsets.UTF_8);
+            client.sendFile(fromUserId, fileBytes, "test.txt", "文件发送测试");
+            log.info("已发送文件测试 from={} size={}", fromUserId, fileBytes.length);
+        } catch (Exception e) {
+            log.warn("文件发送测试失败", e);
+            safeSendText(fromUserId, "文件发送测试失败，请查看日志。");
+        }
+    }
+
+    private void handleUserImage(String fromUserId, MessageItem item) {
+        try {
+            byte[] imageBytes = client.downloadImageFromMessageItem(item);
+            Optional<ImageTextMerger.Pending> merged = imageTextMerger.tryMergeImage(
+                fromUserId, imageBytes, "image.png");
+            if (merged.isPresent()) {
+                ImageTextMerger.Pending pending = merged.get();
+                safeSendText(fromUserId,
+                    llmService.chatWithImage(pending.text(), pending.imageBytes(), pending.fileName()));
+            } else {
+                safeSendText(fromUserId, "图片收到，你可以补充一句想要的处理要求。");
+            }
+        } catch (Exception e) {
+            log.warn("图片消息处理失败", e);
+            safeSendText(fromUserId, "图片解析失败，请稍后再试。");
+        }
+    }
+
+    private void handleImageWithText(String fromUserId, MessageItem item, String text) {
+        imageTextMerger.clear(fromUserId);
+        try {
+            byte[] imageBytes = client.downloadImageFromMessageItem(item);
+            handleImageAndText(fromUserId, text, imageBytes, "image.png");
+        } catch (Exception e) {
+            log.warn("图文消息处理失败", e);
+            safeSendText(fromUserId, "图文处理失败，请稍后再试。");
+        }
+    }
+
+    private void handleImageAndText(String fromUserId, String text, byte[] imageBytes, String fileName) {
+        if ("edit".equals(intentService.classifyImageText(text))) {
+            try {
+                byte[] edited = imageService.editImage(imageBytes, text);
+                client.sendImage(fromUserId, edited, "edited.png", "已按你的要求处理完成");
+                log.info("已发送编辑后图片 from={} size={}", fromUserId, edited.length);
+                return;
+            } catch (Exception e) {
+                log.warn("图像编辑失败，回退图文理解", e);
+            }
+        }
+        try {
+            safeSendText(fromUserId, llmService.chatWithImage(text, imageBytes, fileName));
+        } catch (Exception e) {
+            log.warn("图文理解失败", e);
+            safeSendText(fromUserId, "图文处理失败，请稍后再试。");
+        }
+    }
+
+    private void handleUserVoice(String fromUserId, MessageItem item) {
         VoiceItem voiceItem = item.getVoice_item();
         try {
             byte[] voiceBytes = client.downloadVoiceFromMessageItem(item);
@@ -154,18 +328,75 @@ public class BotService implements ApplicationRunner {
                 transcript = serverText.trim();
                 log.info("使用服务端语音转写结果");
             } else {
-                byte[] wavBytes = voiceService.toWav(voiceBytes, detectAudioSuffix(voiceBytes));
+                byte[] wavBytes;
+                if (isSilk(voiceBytes)) {
+                    wavBytes = voiceService.decodeSilkToWav(voiceBytes);
+                } else {
+                    wavBytes = voiceService.toWav(voiceBytes, detectAudioSuffix(voiceBytes));
+                }
                 transcript = voiceService.transcribe(wavBytes);
             }
 
             if (transcript == null || transcript.isBlank()) {
-                return "没有听清你说的内容，请再发一次语音或直接打字。";
+                safeSendText(fromUserId, "没有听清你说的内容，请再发一次语音或直接打字。");
+                return;
             }
             log.info("语音转写结果 text={}", transcript);
-            return replyToText("用户发来语音，内容为：" + transcript + "。请直接回答用户这句话。");
+            if (transcript.contains("语音回显") || transcript.contains("回显测试")) {
+                echoVoice(fromUserId, item, voiceBytes);
+                return;
+            }
+            handleUserText(fromUserId, transcript);
         } catch (Exception e) {
-            log.warn("语音消息处理失败：{}", e.getMessage());
-            return "语音处理失败：" + e.getMessage();
+            log.warn("语音消息处理失败", e);
+            safeSendText(fromUserId, "语音处理失败，请稍后再试。");
+        }
+    }
+
+    private void echoVoice(String fromUserId, MessageItem item, byte[] voiceBytes) {
+        try {
+            VoiceItem voiceItem = item.getVoice_item();
+            int sampleRate = voiceItem.getSample_rate() != null ? voiceItem.getSample_rate() : 16000;
+            int playtime = voiceItem.getPlaytime() != null ? voiceItem.getPlaytime() : 3000;
+            int encodeType = voiceItem.getEncode_type() != null ? voiceItem.getEncode_type() : 6;
+            client.sendVoice(fromUserId, voiceBytes, "echo.silk", playtime, sampleRate,
+                null, encodeType, 16, "语音回显测试");
+            log.info("已回显语音 from={} encodeType={} sampleRate={} playtime={} size={}",
+                fromUserId, encodeType, sampleRate, playtime, voiceBytes.length);
+        } catch (Exception e) {
+            log.warn("语音回显失败", e);
+            safeSendText(fromUserId, "语音回显失败，请查看日志。");
+        }
+    }
+
+    private void sendVoiceReply(String fromUserId, String replyText) {
+        try {
+            byte[] mp3Bytes = voiceService.synthesizeToMp3(replyText);
+            client.sendFile(fromUserId, mp3Bytes, "reply.mp3", "语音回复");
+            log.info("已发送语音文件回复 from={} size={}", fromUserId, mp3Bytes.length);
+        } catch (Exception e) {
+            log.warn("语音回复失败，回退文本", e);
+            safeSendText(fromUserId, "语音回复失败，请稍后再试。");
+        }
+    }
+
+    private void sendImageReply(String fromUserId, String imagePrompt, String replyText) {
+        try {
+            byte[] imageBytes = imageService.generateImage(imagePrompt);
+            client.sendImage(fromUserId, imageBytes, "image.png", replyText);
+            log.info("已发送图片回复 from={}", fromUserId);
+        } catch (Exception e) {
+            log.warn("图片生成失败，回退文本", e);
+            safeSendText(fromUserId, "图片生成失败，请稍后再试。");
+        }
+    }
+
+    private void safeSendText(String toUserId, String text) {
+        try {
+            client.sendTextWithTyping(toUserId, text, 800L);
+            log.info("已回复 from={} reply={}", toUserId, text);
+        } catch (Exception e) {
+            log.error("回复消息失败 fromUserId={}", toUserId, e);
         }
     }
 
@@ -183,6 +414,11 @@ public class BotService implements ApplicationRunner {
             return ".mp3";
         }
         return ".silk";
+    }
+
+    private boolean isSilk(byte[] bytes) {
+        String head = new String(bytes, 0, Math.min(12, bytes.length), StandardCharsets.US_ASCII);
+        return head.contains("#!SILK_V3");
     }
 
     private String toHex(byte[] bytes) {
@@ -203,16 +439,6 @@ public class BotService implements ApplicationRunner {
             }
         }
         return "收到：" + userText;
-    }
-
-    private String replyToImage(MessageItem item) {
-        try {
-            byte[] imageBytes = client.downloadImageFromMessageItem(item);
-            return llmService.chatWithImage("请描述这张图片", imageBytes, "image.png");
-        } catch (Exception e) {
-            log.warn("图片消息处理失败：{}", e.getMessage());
-            return "图片解析失败：" + e.getMessage();
-        }
     }
 
     private byte[] buildQrPng(String qrContent) throws IOException, WriterException {
