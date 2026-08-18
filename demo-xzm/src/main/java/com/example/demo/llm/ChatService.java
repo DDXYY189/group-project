@@ -10,9 +10,11 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * 文本对话服务：基于通义千问 OpenAI 兼容接口，按微信用户维护多轮对话历史。
@@ -64,6 +66,49 @@ public class ChatService {
             return reply;
         } catch (Exception e) {
             log.error("对话调用失败 userId={}: {}", userId, e.getMessage());
+            history.remove(history.size() - 1);
+            return "调用大模型失败: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 流式对话：通过 SSE 逐 token 返回文本，降低首字延迟。
+     * onToken 回调在每个文本片段到达时被调用，可用于实时触发 TTS。
+     *
+     * @param userId    微信用户 ID
+     * @param userText  用户消息
+     * @param onToken   每收到一个文本片段时的回调
+     * @return 完整的助手回复文本
+     */
+    public String chatStream(String userId, String userText, Consumer<String> onToken) {
+        List<Map<String, String>> history = histories.computeIfAbsent(userId, k -> new ArrayList<>());
+        rebuildSystemMessage(history);
+        history.add(Map.of("role", "user", "content", userText));
+
+        List<Map<String, String>> messages = new ArrayList<>(history);
+        Map<String, Object> request = new HashMap<>();
+        request.put("model", props.getChat().getModel());
+        request.put("messages", messages);
+        request.put("stream", true);
+
+        try {
+            log.info(">>> 流式请求 userId={} 消息条数={}", userId, messages.size());
+            StringBuilder fullReply = new StringBuilder();
+            client.chatCompletionsStream(request, token -> {
+                fullReply.append(token);
+                onToken.accept(token);
+            });
+
+            String reply = fullReply.toString().trim();
+            if (reply.isEmpty()) {
+                reply = "（模型未返回内容）";
+            }
+            log.info("<<< 流式回复 userId={}: {}", userId, reply);
+            history.add(Map.of("role", "assistant", "content", reply));
+            trimHistory(history);
+            return reply;
+        } catch (Exception e) {
+            log.error("流式对话调用失败 userId={}: {}", userId, e.getMessage());
             history.remove(history.size() - 1);
             return "调用大模型失败: " + e.getMessage();
         }

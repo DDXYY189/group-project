@@ -4,8 +4,10 @@ import com.example.demo.config.LlmProperties;
 import com.example.demo.llm.AsrService;
 import com.example.demo.llm.ChatService;
 import com.example.demo.llm.ImageGenerationService;
+import com.example.demo.llm.IntentService;
 import com.example.demo.llm.TtsService;
 import com.example.demo.llm.VisionService;
+import com.example.demo.llm.WeatherService;
 import com.github.wechat.ilink.sdk.ILinkClient;
 import com.github.wechat.ilink.sdk.core.model.MessageItem;
 import com.github.wechat.ilink.sdk.core.model.VoiceItem;
@@ -15,17 +17,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * 消息路由：根据消息类型与指令分发到对应的大模型能力，并通过微信回复。
+ * 消息路由：通过 LLM 意图识别自动分发用户消息到对应能力。
  *
- * 文本指令：
- *   「画 <描述>」/「/img <描述>」 → 通义万相生成图片
- *   「说 <文本>」/「/voice <文本>」 → CosyVoice 语音合成
- *   「/clear」                    → 清除对话记忆
- *   其他                         → Qwen 多轮对话
- * 语音消息：识别为文字 → 对话 → 语音回复
- * 图片消息：确认收到
+ * 双通道并行：LLM 生成完整文本后，文字和语音同时输出。
+ *   1. 文字通道：立即发送文本回复
+ *   2. 语音通道：TTS 合成 MP3 音频后发送语音消息（后台异步）
  */
 @Service
 public class MessageHandler {
@@ -38,11 +37,14 @@ public class MessageHandler {
     private final TtsService ttsService;
     private final AsrService asrService;
     private final VisionService visionService;
+    private final WeatherService weatherService;
+    private final IntentService intentService;
     private final LlmProperties llmProps;
 
     public MessageHandler(ILinkClient client, ChatService chatService,
                           ImageGenerationService imageService, TtsService ttsService,
                           AsrService asrService, VisionService visionService,
+                          WeatherService weatherService, IntentService intentService,
                           LlmProperties llmProps) {
         this.client = client;
         this.chatService = chatService;
@@ -50,6 +52,8 @@ public class MessageHandler {
         this.ttsService = ttsService;
         this.asrService = asrService;
         this.visionService = visionService;
+        this.weatherService = weatherService;
+        this.intentService = intentService;
         this.llmProps = llmProps;
     }
 
@@ -79,33 +83,60 @@ public class MessageHandler {
         if (text.isEmpty()) {
             return;
         }
+        routeByIntent(userId, text, false);
+    }
 
-        String imgPrompt = extractImagePrompt(text);
-        if (imgPrompt != null) {
-            sendText(userId, "正在为你生成图片，请稍候...");
-            try {
-                byte[] imageBytes = imageService.generate(imgPrompt);
-                client.sendImage(userId, imageBytes, "generated.png", imgPrompt);
-            } catch (Exception e) {
-                sendText(userId, "图片生成失败: " + e.getMessage());
+    private void routeByIntent(String userId, String text, boolean fromVoice) {
+        IntentService.IntentResult result = intentService.classify(text);
+        log.info("意图识别 userId={} text=\"{}\" → {} param={}", userId, text, result.type(), result.param());
+
+        switch (result.type()) {
+            case IMAGE -> handleImageIntent(userId, result.param());
+            case WEATHER -> handleWeatherIntent(userId, result.param(), fromVoice);
+            case VOICE -> handleVoiceIntent(userId, result.param());
+            case CLEAR -> {
+                chatService.clearHistory(userId);
+                sendText(userId, "对话记忆已清除，可以重新开始啦~");
             }
+            case TEXT -> {
+                String reply = chatService.chat(userId, text);
+                sendText(userId, reply);
+            }
+            default -> {
+                String reply = chatService.chat(userId, text);
+                sendTextAndVoice(userId, reply, fromVoice);
+            }
+        }
+    }
+
+    private void handleWeatherIntent(String userId, String city, boolean fromVoice) {
+        String weatherInfo = weatherService.getWeather(city != null ? city : "北京");
+        String prompt = "用户查询" + (city != null ? city : "北京") +
+                "的天气，以下是实时天气数据，请用口语化方式回复用户：\n" + weatherInfo;
+        String reply = chatService.chat(userId, prompt);
+        sendTextAndVoice(userId, reply, fromVoice);
+    }
+
+    private void handleVoiceIntent(String userId, String param) {
+        if (param == null || param.isBlank()) {
+            sendText(userId, "你想让我用语音说什么呢？");
             return;
         }
+        sendVoiceMp3(userId, param);
+    }
 
-        String ttsText = extractTtsText(text);
-        if (ttsText != null) {
-            sendVoiceReply(userId, ttsText);
+    private void handleImageIntent(String userId, String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            sendText(userId, "你想画什么呢？告诉我图片描述吧~");
             return;
         }
-
-        if (text.equals("/clear") || text.equals("清除记忆")) {
-            chatService.clearHistory(userId);
-            sendText(userId, "对话记忆已清除，可以重新开始啦~");
-            return;
+        sendText(userId, "正在为你生成图片，请稍候...");
+        try {
+            byte[] imageBytes = imageService.generate(prompt);
+            client.sendImage(userId, imageBytes, "generated.png", prompt);
+        } catch (Exception e) {
+            sendText(userId, "图片生成失败: " + e.getMessage());
         }
-
-        String reply = chatService.chat(userId, text);
-        sendText(userId, reply);
     }
 
     private void handleVoice(String userId, WeixinMessage msg, MessageItem item) throws Exception {
@@ -128,76 +159,76 @@ public class MessageHandler {
         }
 
         log.info("语音识别结果 userId={}: {}", userId, text);
-        String reply = chatService.chat(userId, text);
-        sendVoiceReply(userId, reply);
+        routeByIntent(userId, text, true);
     }
 
-    /**
-     * 处理图片消息：下载图片原图，调用 Qwen-VL 多模态模型理解图片内容并回复。
-     */
     private void handleImage(String userId, MessageItem item) {
         sendText(userId, "正在看图，请稍候...");
         try {
             byte[] imageBytes = client.downloadImageFromMessageItem(item);
             String reply = visionService.understand(imageBytes, "请描述这张图片的内容。");
-            sendText(userId, reply);
+            sendTextAndVoice(userId, reply, false);
         } catch (Exception e) {
             log.error("图片理解失败 userId={}: {}", userId, e.getMessage(), e);
             sendText(userId, "图片理解失败: " + e.getMessage());
         }
     }
 
-    private void sendVoiceReply(String userId, String text) {
+    /**
+     * 双通道并行：文字立即发送，MP3 文件后台合成后异步发送。
+     */
+    private void sendTextAndVoice(String userId, String text, boolean fromVoice) {
+        if (text == null || text.isEmpty()) return;
+
+        sendText(userId, text);
+        if (text.length() <= 500) {
+            CompletableFuture.runAsync(() -> sendVoiceMp3(userId, text));
+        }
+    }
+
+    /**
+     * 合成并发送 MP3 语音：优先 WebSocket 流式（输出 MP3），失败回退 HTTP API（自动检测格式）。
+     */
+    private void sendVoiceMp3(String userId, String text) {
         try {
-            byte[] audio = ttsService.synthesize(text);
-            int durationMs = estimateDurationMs(text);
-            String ext = llmProps.getTts().getFormat();
-            client.sendVoice(userId, audio, "reply." + ext, durationMs, llmProps.getTts().getSampleRate());
+            byte[] audio = ttsService.synthesizeStream(text);
+            sendVoiceBytes(userId, audio, text, llmProps.getTts().getFormat());
         } catch (Exception e) {
-            log.warn("语音回复失败，回退为文字: {}", e.getMessage());
+            log.warn("WebSocket TTS 失败，回退 HTTP API: {}", e.getMessage());
+            sendVoiceHttp(userId, text);
+        }
+    }
+
+    /**
+     * HTTP API 语音合成（回退路径），从返回 URL 自动检测格式。
+     */
+    private void sendVoiceHttp(String userId, String text) {
+        try {
+            TtsService.TtsResult result = ttsService.synthesize(text);
+            sendVoiceBytes(userId, result.audio(), text, result.format());
+        } catch (Exception e) {
+            log.warn("HTTP 语音合成失败，回退为文字: {}", e.getMessage());
             sendText(userId, text);
+        }
+    }
+
+    private void sendVoiceBytes(String userId, byte[] audio, String text, String format) {
+        try {
+            String fileName = "reply." + format;
+            String caption = text.length() > 100 ? text.substring(0, 100) + "..." : text;
+            client.sendFile(userId, audio, fileName, caption);
+            log.info("MP3 文件已发送 userId={} format={} size={}bytes", userId, format, audio.length);
+        } catch (IOException e) {
+            log.error("发送 MP3 文件失败 userId={}: {}", userId, e.getMessage());
         }
     }
 
     private void sendText(String userId, String text) {
         try {
             client.sendTextWithTyping(userId, text, 800L);
+            log.info("文字已发送 userId={} length={}", userId, text.length());
         } catch (IOException e) {
             log.error("发送文本失败 userId={}: {}", userId, e.getMessage());
         }
-    }
-
-    private int estimateDurationMs(String text) {
-        int ms = text.length() * 200;
-        return Math.max(1000, Math.min(ms, 60000));
-    }
-
-    private String extractImagePrompt(String text) {
-        if (text.startsWith("画")) {
-            String p = text.substring(1).trim();
-            return p.isEmpty() ? null : p;
-        }
-        String lower = text.toLowerCase();
-        if (lower.startsWith("/img")) {
-            String p = text.substring(4).trim();
-            return p.isEmpty() ? null : p;
-        }
-        return null;
-    }
-
-    private String extractTtsText(String text) {
-        if (text.startsWith("说")) {
-            String p = text.substring(1).trim();
-            return p.isEmpty() ? null : p;
-        }
-        String lower = text.toLowerCase();
-        if (lower.startsWith("/voice") || lower.startsWith("/tts")) {
-            int idx = text.indexOf(' ');
-            if (idx > 0) {
-                String p = text.substring(idx + 1).trim();
-                return p.isEmpty() ? null : p;
-            }
-        }
-        return null;
     }
 }

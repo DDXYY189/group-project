@@ -13,6 +13,8 @@ public class LlmProperties {
     private Tts tts = new Tts();
     private Asr asr = new Asr();
     private Vision vision = new Vision();
+    private Weather weather = new Weather();
+    private Intent intent = new Intent();
 
     public String getApiKey() {
         return apiKey;
@@ -68,6 +70,22 @@ public class LlmProperties {
 
     public void setVision(Vision vision) {
         this.vision = vision;
+    }
+
+    public Weather getWeather() {
+        return weather;
+    }
+
+    public void setWeather(Weather weather) {
+        this.weather = weather;
+    }
+
+    public Intent getIntent() {
+        return intent;
+    }
+
+    public void setIntent(Intent intent) {
+        this.intent = intent;
     }
 
     public static class Chat {
@@ -131,8 +149,9 @@ public class LlmProperties {
     }
 
     public static class Tts {
-        private String model = "cosyvoice-v2";
-        private String voice = "longxiaochun_v2";
+        private String model = "cosyvoice-v3-flash";
+        private String voice = "longhuhu_v3";
+        // 非流式 HTTP API 默认返回 mp3@22050Hz，流式 WebSocket API 显式请求同样格式
         private String format = "mp3";
         private int sampleRate = 22050;
 
@@ -184,6 +203,50 @@ public class LlmProperties {
     public static class Vision {
         // Qwen-VL-Plus：通义千问视觉理解模型，支持图片理解、OCR、图表解读
         private String model = "qwen-vl-plus";
+
+        public String getModel() {
+            return model;
+        }
+
+        public void setModel(String model) {
+            this.model = model;
+        }
+    }
+
+    public static class Weather {
+        private String apiKey;
+        // 免费用户用 devapi，付费用户用 api
+        private String host = "mu7jpk64xd.re.qweatherapi.com";
+        // 免费用户 key 以 DEV 开头
+        private int cacheMinutes = 30;
+
+        public String getApiKey() {
+            return apiKey;
+        }
+
+        public void setApiKey(String apiKey) {
+            this.apiKey = apiKey;
+        }
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public int getCacheMinutes() {
+            return cacheMinutes;
+        }
+
+        public void setCacheMinutes(int cacheMinutes) {
+            this.cacheMinutes = cacheMinutes;
+        }
+    }
+
+    public static class Intent {
+        private String model = "qwen-plus";
 
         public String getModel() {
             return model;

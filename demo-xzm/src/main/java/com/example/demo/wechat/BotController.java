@@ -51,10 +51,11 @@ public class BotController {
                     + "<img src='" + qr + "' style='width:300px'/>"
                     + "</body></html>");
         }
-        String escaped = qr.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-        return ResponseEntity.ok("<html><body style='font-family:monospace;white-space:pre'>"
-                + "<h3>二维码原始内容：</h3>"
-                + escaped
+        String svg = QrCodeUtil.toSvg(qr, 10);
+        return ResponseEntity.ok("<html><head><meta charset='UTF-8'></head>"
+                + "<body style='text-align:center;background:#f5f5f5'>"
+                + "<h3>请用微信扫码登录</h3>"
+                + svg
                 + "</body></html>");
     }
 }

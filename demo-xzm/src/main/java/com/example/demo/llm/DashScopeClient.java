@@ -5,12 +5,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * DashScope HTTP 调用底层封装。
@@ -59,6 +66,58 @@ public class DashScopeClient {
                 .build();
         HttpResponse<String> resp = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         return parseResponse(resp);
+    }
+
+    /**
+     * SSE 流式 chat/completions 调用：逐 token 返回文本，降低首字延迟。
+     * 请求体需包含 "stream": true。
+     *
+     * @param requestBody 包含 stream:true 的请求体
+     * @param onToken      每收到一个文本片段时的回调
+     */
+    public void chatCompletionsStream(Object requestBody, Consumer<String> onToken) throws Exception {
+        String json = objectMapper.writeValueAsString(requestBody);
+        URL url = URI.create(props.getBaseUrl() + "/compatible-mode/v1/chat/completions").toURL();
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Authorization", bearer());
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("Accept", "text/event-stream");
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(30000);
+        conn.setReadTimeout(120000);
+
+        try (var out = conn.getOutputStream()) {
+            out.write(json.getBytes(StandardCharsets.UTF_8));
+        }
+
+        int status = conn.getResponseCode();
+        InputStream stream = status / 100 == 2 ? conn.getInputStream() : conn.getErrorStream();
+        if (status / 100 != 2) {
+            String errBody = stream != null
+                    ? new String(stream.readAllBytes(), StandardCharsets.UTF_8)
+                    : "";
+            conn.disconnect();
+            throw new RuntimeException("DashScope SSE 调用失败 HTTP " + status + ": " + errBody);
+        }
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.startsWith("data:")) continue;
+                String data = line.substring(5).trim();
+                if ("[DONE]".equals(data)) break;
+                if (data.isEmpty()) continue;
+                JsonNode node = objectMapper.readTree(data);
+                String delta = node.path("choices").path(0).path("delta").path("content").asText("");
+                if (!delta.isEmpty()) {
+                    onToken.accept(delta);
+                }
+            }
+        } finally {
+            conn.disconnect();
+        }
     }
 
     /**
