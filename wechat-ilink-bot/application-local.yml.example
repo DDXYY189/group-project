@@ -2,5 +2,12 @@ llm:
   api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   text-model: qwen-turbo
   vision-model: qwen-vl-plus
-  asr-model: qwen-audio-turbo
+  intent-model: qwen-turbo
+  image-model: wanx-v1
+  tts-model: cosyvoice-v2
+  tts-voice: longxiaochun_v2
   base-url: https://dashscope.aliyuncs.com/api/v1
+
+# 心知天气 API 配置（替换为你的心知天气 API Key）
+seniverse:
+  api-key: your-seniverse-api-key-here
