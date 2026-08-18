@@ -59,7 +59,10 @@ public class LlmService {
     public String chat(String userText) throws Exception {
         Message systemMsg = Message.builder()
                 .role(Role.SYSTEM.getValue())
-                .content("你是一个友好的微信聊天机器人，回复要简洁自然，控制在100字以内。")
+                .content("你是一个友好的微信聊天机器人。\n"
+                        + "如果用户要求你画画、生成图片或发送图片，你只输出一行：`[IMAGE:<图片提示词>]`，提示词用中文，不要有多余文字。\n"
+                        + "如果用户要求你发语音、念出来或读出来，你只输出一行：`[VOICE:<要朗读的内容>]`，内容用中文，不要有多余文字。\n"
+                        + "其他情况下，请简洁自然地回复，控制在100字以内。")
                 .build();
 
         Message userMsg = Message.builder()
@@ -76,6 +79,11 @@ public class LlmService {
 
         GenerationResult result = generation.call(param);
         return result.getOutput().getChoices().get(0).getMessage().getContent();
+    }
+
+    /** 获取 API Key（用于图片等其他服务复用同一份密钥） */
+    public String getApiKey() {
+        return apiKey;
     }
 
     /** 打日志时把 key 打码，避免泄露 */
