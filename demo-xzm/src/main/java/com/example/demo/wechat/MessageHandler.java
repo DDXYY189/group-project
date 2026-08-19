@@ -4,10 +4,8 @@ import com.example.demo.config.LlmProperties;
 import com.example.demo.llm.AsrService;
 import com.example.demo.llm.ChatService;
 import com.example.demo.llm.ImageGenerationService;
-import com.example.demo.llm.IntentService;
 import com.example.demo.llm.TtsService;
 import com.example.demo.llm.VisionService;
-import com.example.demo.llm.WeatherService;
 import com.github.wechat.ilink.sdk.ILinkClient;
 import com.github.wechat.ilink.sdk.core.model.MessageItem;
 import com.github.wechat.ilink.sdk.core.model.VoiceItem;
@@ -20,7 +18,7 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 消息路由：通过 LLM 意图识别自动分发用户消息到对应能力。
+ * 消息路由：Function Calling 模式，LLM 自主决定调用工具或直接回复。
  *
  * 双通道并行：LLM 生成完整文本后，文字和语音同时输出。
  *   1. 文字通道：立即发送文本回复
@@ -37,14 +35,11 @@ public class MessageHandler {
     private final TtsService ttsService;
     private final AsrService asrService;
     private final VisionService visionService;
-    private final WeatherService weatherService;
-    private final IntentService intentService;
     private final LlmProperties llmProps;
 
     public MessageHandler(ILinkClient client, ChatService chatService,
                           ImageGenerationService imageService, TtsService ttsService,
                           AsrService asrService, VisionService visionService,
-                          WeatherService weatherService, IntentService intentService,
                           LlmProperties llmProps) {
         this.client = client;
         this.chatService = chatService;
@@ -52,8 +47,6 @@ public class MessageHandler {
         this.ttsService = ttsService;
         this.asrService = asrService;
         this.visionService = visionService;
-        this.weatherService = weatherService;
-        this.intentService = intentService;
         this.llmProps = llmProps;
     }
 
@@ -78,58 +71,51 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * 文本消息处理：Function Calling 模式。
+     * 关键词快捷入口（画图/清记忆）优先处理，其余交给 LLM+Tools 自主决策。
+     */
     private void handleText(String userId, String rawText) {
         String text = rawText == null ? "" : rawText.trim();
         if (text.isEmpty()) {
             return;
         }
-        routeByIntent(userId, text, false);
-    }
 
-    private void routeByIntent(String userId, String text, boolean fromVoice) {
-        IntentService.IntentResult result = intentService.classify(text);
-        log.info("意图识别 userId={} text=\"{}\" → {} param={}", userId, text, result.type(), result.param());
-
-        switch (result.type()) {
-            case IMAGE -> handleImageIntent(userId, result.param());
-            case WEATHER -> handleWeatherIntent(userId, result.param(), fromVoice);
-            case VOICE -> handleVoiceIntent(userId, result.param());
-            case CLEAR -> {
-                chatService.clearHistory(userId);
-                sendText(userId, "对话记忆已清除，可以重新开始啦~");
-            }
-            case TEXT -> {
-                String reply = chatService.chat(userId, text);
-                sendText(userId, reply);
-            }
-            default -> {
-                String reply = chatService.chat(userId, text);
-                sendTextAndVoice(userId, reply, fromVoice);
-            }
-        }
-    }
-
-    private void handleWeatherIntent(String userId, String city, boolean fromVoice) {
-        String weatherInfo = weatherService.getWeather(city != null ? city : "北京");
-        String prompt = "用户查询" + (city != null ? city : "北京") +
-                "的天气，以下是实时天气数据，请用口语化方式回复用户：\n" + weatherInfo;
-        String reply = chatService.chat(userId, prompt);
-        sendTextAndVoice(userId, reply, fromVoice);
-    }
-
-    private void handleVoiceIntent(String userId, String param) {
-        if (param == null || param.isBlank()) {
-            sendText(userId, "你想让我用语音说什么呢？");
+        // 快捷指令：清除记忆
+        if (text.equals("/clear") || text.contains("清除记忆") || text.contains("重新开始")) {
+            chatService.clearHistory(userId);
+            sendText(userId, "对话记忆已清除，可以重新开始啦~");
             return;
         }
-        sendVoiceMp3(userId, param);
+
+        // 快捷指令：画图（"画 xxx" 或 "/img xxx"）
+        if (text.startsWith("画") || text.startsWith("/img") || text.startsWith("/IMG")) {
+            String prompt = text.startsWith("画")
+                    ? text.substring(1).trim()
+                    : text.replaceFirst("(?i)/img\\s*", "").trim();
+            if (!prompt.isEmpty()) {
+                handleImageIntent(userId, prompt);
+                return;
+            }
+        }
+
+        // 快捷指令：纯语音（"说 xxx" 或 "/voice xxx"）
+        if (text.startsWith("说") || text.startsWith("/voice")) {
+            String voiceText = text.startsWith("说")
+                    ? text.substring(1).trim()
+                    : text.replaceFirst("(?i)/voice\\s*", "").trim();
+            if (!voiceText.isEmpty()) {
+                sendVoiceMp3(userId, voiceText);
+                return;
+            }
+        }
+
+        // 默认：Function Calling 对话（LLM 自主决定调用 get_weather / get_current_time 等工具）
+        String reply = chatService.chatWithTools(userId, text);
+        sendTextAndVoice(userId, reply, false);
     }
 
     private void handleImageIntent(String userId, String prompt) {
-        if (prompt == null || prompt.isBlank()) {
-            sendText(userId, "你想画什么呢？告诉我图片描述吧~");
-            return;
-        }
         sendText(userId, "正在为你生成图片，请稍候...");
         try {
             byte[] imageBytes = imageService.generate(prompt);
@@ -159,7 +145,10 @@ public class MessageHandler {
         }
 
         log.info("语音识别结果 userId={}: {}", userId, text);
-        routeByIntent(userId, text, true);
+
+        // 语音输入同样走 Function Calling
+        String reply = chatService.chatWithTools(userId, text);
+        sendTextAndVoice(userId, reply, true);
     }
 
     private void handleImage(String userId, MessageItem item) {
