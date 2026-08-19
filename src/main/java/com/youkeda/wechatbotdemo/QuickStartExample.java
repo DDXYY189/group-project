@@ -83,6 +83,7 @@ public class QuickStartExample {
                     System.out.println("收到 [" + fromUser + "] " + content.type.label + ": " + content.text);
 
                     try {
+                        byte[] directImage = null; // Function Calling 里图片工具直接生成的图
                         String reply;
                         if (content.type == MessageType.VOICE_UNRECOGNIZED) {
                             // 收到语音但服务端没返回转写文字，友好提示
@@ -93,45 +94,58 @@ public class QuickStartExample {
                                     ? "（用户发来一条语音消息，内容已自动转成文字）" + content.text
                                     : content.text;
 
-                            // 先看是不是查天气（如 "杭州天气"），是则直接查心知天气，不走大模型
+                            // 1. 老规则：先看是不是查天气（如 "杭州天气"），是则直接查心知天气，不走大模型
                             String city = extractWeatherCity(content.text);
                             if (city != null) {
                                 reply = weatherService.queryWeather(city);
                                 System.out.println("天气查询 [" + fromUser + "]: " + city);
                             } else {
-                                reply = llmService.chat(prompt);
+                                // 2. Function Calling：大模型自己决定调哪个工具（查单词/随机数/天气/图片）
+                                LlmService.ChatResult result = llmService.chatWithTools(prompt);
+                                if (result.imageBytes != null) {
+                                    directImage = result.imageBytes;
+                                    reply = null;
+                                } else {
+                                    reply = result.text;
+                                }
                             }
                         }
 
                         // 第三步：根据回复类型发回给用户
-                        String voiceText = extractVoiceText(reply);
-                        String imagePrompt = extractImagePrompt(reply);
-
-                        if (voiceText != null && !voiceText.isBlank()) {
-                            // 大模型要求发语音
-                            client.sendText(fromUser, "语音正在合成中，稍等片刻哦～");
-                            try {
-                                VoiceService.SilkVoiceResult voice = voiceService.synthesizeToSilk(voiceText);
-                                client.sendVoice(fromUser, voice.silkBytes, "voice.silk", voice.playTimeMs, voice.sampleRate);
-                                System.out.println("回复 [" + fromUser + "]: 已发送语音，内容=" + voiceText);
-                            } catch (Exception voiceErr) {
-                                System.err.println("语音合成失败: " + voiceErr.getMessage());
-                                client.sendText(fromUser, "语音合成失败啦，先跟你说：" + reply);
-                            }
-                        } else if (imagePrompt != null && !imagePrompt.isBlank()) {
-                            // 大模型要求发图片
-                            client.sendText(fromUser, "图片正在生成中，稍等片刻哦～");
-                            try {
-                                byte[] imageBytes = imageService.generateImage(imagePrompt);
-                                client.sendImage(fromUser, imageBytes, "generated.png", "这是按你要求生成的图片～");
-                                System.out.println("回复 [" + fromUser + "]: 已发送图片，提示词=" + imagePrompt);
-                            } catch (Exception imgErr) {
-                                System.err.println("图片生成失败: " + imgErr.getMessage());
-                                client.sendText(fromUser, "图片生成失败啦，先跟你聊聊：" + reply);
-                            }
+                        if (directImage != null) {
+                            // Function Calling 的图片工具已直接生成图片 → 直接发图，不再发文字
+                            client.sendImage(fromUser, directImage, "generated.png", "这是按你要求生成的图片～");
+                            System.out.println("回复 [" + fromUser + "]: 已发送图片(Function Calling)");
                         } else {
-                            client.sendText(fromUser, reply);
-                            System.out.println("回复 [" + fromUser + "]: " + reply);
+                            String voiceText = extractVoiceText(reply);
+                            String imagePrompt = extractImagePrompt(reply);
+
+                            if (voiceText != null && !voiceText.isBlank()) {
+                                // 大模型要求发语音
+                                client.sendText(fromUser, "语音正在合成中，稍等片刻哦～");
+                                try {
+                                    VoiceService.SilkVoiceResult voice = voiceService.synthesizeToSilk(voiceText);
+                                    client.sendVoice(fromUser, voice.silkBytes, "voice.silk", voice.playTimeMs, voice.sampleRate);
+                                    System.out.println("回复 [" + fromUser + "]: 已发送语音，内容=" + voiceText);
+                                } catch (Exception voiceErr) {
+                                    System.err.println("语音合成失败: " + voiceErr.getMessage());
+                                    client.sendText(fromUser, "语音合成失败啦，先跟你说：" + reply);
+                                }
+                            } else if (imagePrompt != null && !imagePrompt.isBlank()) {
+                                // 大模型要求发图片（[IMAGE:xxx] 标记方式）
+                                client.sendText(fromUser, "图片正在生成中，稍等片刻哦～");
+                                try {
+                                    byte[] imageBytes = imageService.generateImage(imagePrompt);
+                                    client.sendImage(fromUser, imageBytes, "generated.png", "这是按你要求生成的图片～");
+                                    System.out.println("回复 [" + fromUser + "]: 已发送图片，提示词=" + imagePrompt);
+                                } catch (Exception imgErr) {
+                                    System.err.println("图片生成失败: " + imgErr.getMessage());
+                                    client.sendText(fromUser, "图片生成失败啦，先跟你聊聊：" + reply);
+                                }
+                            } else {
+                                client.sendText(fromUser, reply);
+                                System.out.println("回复 [" + fromUser + "]: " + reply);
+                            }
                         }
                     } catch (Exception e) {
                         System.err.println("处理消息失败: " + e.getMessage());
