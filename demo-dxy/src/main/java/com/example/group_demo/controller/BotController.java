@@ -26,6 +26,7 @@ public class BotController {
         result.put("loggedIn", botService.isLoggedIn());
         result.put("connectionStatus", botService.getConnectionStatus());
         result.put("llmConfigured", botService.isLlmConfigured());
+        result.put("tools", botService.getToolNames());
         result.put("loginError", botService.getLoginError());
         if (botService.getLoginContext() != null) {
             result.put("botId", botService.getLoginContext().getBotId());

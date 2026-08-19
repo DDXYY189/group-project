@@ -5,8 +5,8 @@ import com.example.group_demo.image.ImageService;
 import com.example.group_demo.intent.Intent;
 import com.example.group_demo.intent.ImageTextMerger;
 import com.example.group_demo.intent.IntentService;
+import com.example.group_demo.tool.ToolRegistry;
 import com.example.group_demo.voice.VoiceService;
-import com.example.group_demo.weather.WeatherService;
 import com.github.wechat.ilink.sdk.ILinkClient;
 import com.github.wechat.ilink.sdk.core.login.LoginContext;
 import com.github.wechat.ilink.sdk.core.model.MessageItem;
@@ -36,8 +36,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class BotService implements ApplicationRunner {
@@ -49,7 +47,7 @@ public class BotService implements ApplicationRunner {
     private final VoiceService voiceService;
     private final IntentService intentService;
     private final ImageService imageService;
-    private final WeatherService weatherService;
+    private final ToolRegistry toolRegistry;
     private final ImageTextMerger imageTextMerger;
     private final ExecutorService messageExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "ilink-message-handler");
@@ -63,13 +61,13 @@ public class BotService implements ApplicationRunner {
 
     public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService,
                       IntentService intentService, ImageService imageService,
-                      WeatherService weatherService, ImageTextMerger imageTextMerger) {
+                      ToolRegistry toolRegistry, ImageTextMerger imageTextMerger) {
         this.client = client;
         this.llmService = llmService;
         this.voiceService = voiceService;
         this.intentService = intentService;
         this.imageService = imageService;
-        this.weatherService = weatherService;
+        this.toolRegistry = toolRegistry;
         this.imageTextMerger = imageTextMerger;
     }
 
@@ -82,7 +80,7 @@ public class BotService implements ApplicationRunner {
         try {
             String qrContent = client.executeLogin();
             this.qrPng = buildQrPng(qrContent);
-            log.info("二维码已就绪，访问 http://localhost:8080/api/bot/qr.png 扫码登录");
+            log.info("二维码已就绪，访问 http://localhost:8080 扫码登录");
         } catch (Exception e) {
             this.loginError = e.getMessage();
             log.error("获取登录二维码失败", e);
@@ -169,15 +167,6 @@ public class BotService implements ApplicationRunner {
             sendFileTest(fromUserId);
             return;
         }
-        if (userText.contains("天气")) {
-            String location = extractLocation(userText);
-            try {
-                safeSendText(fromUserId, weatherService.getWeatherText(location));
-                return;
-            } catch (Exception e) {
-                log.warn("天气查询失败，走普通回复 location={}", location, e);
-            }
-        }
         Optional<ImageTextMerger.Pending> merged = imageTextMerger.tryMergeText(fromUserId, userText);
         if (merged.isPresent()) {
             ImageTextMerger.Pending pending = merged.get();
@@ -190,16 +179,17 @@ public class BotService implements ApplicationRunner {
         }
         Intent intent = intentService.classify(userText);
         if (intent == null || intent.action() == null) {
-            safeSendText(fromUserId, replyToText(userText));
+            safeSendText(fromUserId, replyToText(fromUserId, userText));
             return;
         }
         switch (intent.action()) {
-            case "voice" -> sendVoiceReply(fromUserId, replyToText(cleanInstruction(userText)));
+            case "voice" -> sendVoiceReply(fromUserId,
+                replyToText(fromUserId, cleanInstruction(userText)));
             case "image" -> sendImageReply(fromUserId,
                 intent.imagePrompt() != null ? intent.imagePrompt() : userText,
                 intent.reply() != null ? intent.reply() : "图片生成完成");
-            default -> safeSendText(fromUserId,
-                intent.reply() != null ? intent.reply() : replyToText(userText));
+            // 文本回复必须走带记忆的 chat，否则模型看不到历史上下文
+            default -> safeSendText(fromUserId, replyToText(fromUserId, userText));
         }
     }
 
@@ -233,26 +223,6 @@ public class BotService implements ApplicationRunner {
             }
         }
         return false;
-    }
-
-    private String extractLocation(String text) {
-        String cleaned = text == null ? "" : text;
-        String[] words = {
-            "今天", "明天", "后天", "昨天", "现在", "当前", "查一下", "帮我",
-            "看看", "怎么样", "如何", "是什么", "什么", "呢", "啊", "呀", "吗", "的"
-        };
-        for (String word : words) {
-            cleaned = cleaned.replace(word, "");
-        }
-        Matcher matcher = Pattern.compile("([\\u4e00-\\u9fa5A-Za-z]{1,8}?)(?:省|市)?天气")
-            .matcher(cleaned);
-        if (matcher.find()) {
-            String city = matcher.group(1).trim();
-            if (!city.isEmpty()) {
-                return city;
-            }
-        }
-        return "北京";
     }
 
     private void sendFileTest(String fromUserId) {
@@ -430,10 +400,10 @@ public class BotService implements ApplicationRunner {
         return sb.toString().trim();
     }
 
-    private String replyToText(String userText) {
+    private String replyToText(String fromUserId, String userText) {
         if (llmService.isConfigured()) {
             try {
-                return llmService.chat(userText);
+                return llmService.chatWithTools(fromUserId, userText);
             } catch (Exception e) {
                 log.warn("LLM 文本调用失败，回退为回显：{}", e.getMessage());
             }
@@ -478,5 +448,9 @@ public class BotService implements ApplicationRunner {
 
     public String getLoginError() {
         return loginError;
+    }
+
+    public List<String> getToolNames() {
+        return toolRegistry.names();
     }
 }
