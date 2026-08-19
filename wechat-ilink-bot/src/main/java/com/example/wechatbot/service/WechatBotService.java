@@ -33,6 +33,9 @@ public class WechatBotService {
     @Autowired
     private IntentService intentService;
 
+    @Autowired
+    private FunctionCallService functionCallService;
+
     @Value("${wechat.enabled:true}")
     private boolean enabled;
 
@@ -303,8 +306,15 @@ public class WechatBotService {
 
                 log.info("语音转文字: {}", voiceText);
 
-                // 大模型处理：将识别出的文字作为用户提问，获取回答文本
-                String reply = llmService.chat(voiceText);
+                // 大模型处理：走 Function Calling，大模型自动判断是否调用工具（getZoneTime / dateToWeekday）
+                // 失败时降级为普通对话
+                String reply;
+                try {
+                    reply = functionCallService.chatWithTools(voiceText);
+                } catch (Exception e) {
+                    log.warn("语音 Function Calling 失败, 降级为普通对话: {}", e.getMessage());
+                    reply = llmService.chat(voiceText);
+                }
 
                 // 文字回复
                 client.sendText(fromUserId, reply);
@@ -477,7 +487,7 @@ public class WechatBotService {
     /**
      * 处理纯文字消息（意图识别 + 分发）
      * 根据意图识别结果分流到不同处理逻辑：
-     * - text:  普通聊天问答
+     * - text:  普通聊天问答（走 Function Calling，大模型自动判断是否调用 getZoneTime / dateToWeekday 工具）
      * - voice: 语音播报（文字+MP3文件）
      * - image: 进一步按 subIntent 细分
      *   - image_gen:  文生图（用户纯文字描述画图）
@@ -503,7 +513,15 @@ public class WechatBotService {
                 handleVoiceIntent(userId, text);
                 break;
             default:
-                String reply = llmService.chat(text);
+                // text 意图：走 Function Calling，大模型自动判断是否调用工具（getZoneTime / dateToWeekday）
+                // 完整链路：用户消息 → 大模型判断 → 执行本地 Java 方法 → 结果回传 → 组装回答
+                String reply;
+                try {
+                    reply = functionCallService.chatWithTools(text);
+                } catch (Exception e) {
+                    log.warn("Function Calling 失败, 降级为普通对话: {}", e.getMessage());
+                    reply = llmService.chat(text);
+                }
                 try {
                     client.sendTextWithTyping(userId, reply, 1500L);
                 } catch (Exception e) {

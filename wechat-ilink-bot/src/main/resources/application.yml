@@ -7,7 +7,7 @@ server:
 
 llm:
   api-key: ${DASHSCOPE_API_KEY:}
-  text-model: qwen-turbo
+  text-model: qwen-plus
   vision-model: qwen-vl-plus
   intent-model: qwen-turbo
   image-model: wanx-v1
