@@ -28,11 +28,31 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<wechat-ilink-sdk.version>2.3.3</wechat-ilink-sdk.version>
+		<zxing.version>3.5.3</zxing.version>
 	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>io.github.lith0924</groupId>
+			<artifactId>wechat-ilink-sdk</artifactId>
+			<version>${wechat-ilink-sdk.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>${zxing.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>javase</artifactId>
+			<version>${zxing.version}</version>
 		</dependency>
 
 		<dependency>
