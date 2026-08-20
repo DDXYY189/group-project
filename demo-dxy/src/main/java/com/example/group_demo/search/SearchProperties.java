@@ -7,8 +7,11 @@ public class SearchProperties {
 
     private String apiKey = "";
     private String baseUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-    private String model = "glm-4-flash";
-    private int maxResults = 8;
+    private String model = "glm-4-plus";
+    private int maxResults = 10;
+    private String searchEngine = "search_pro";
+    private String recencyFilter = "noLimit";
+    private String contentSize = "high";
 
     public String getApiKey() {
         return apiKey;
@@ -40,5 +43,29 @@ public class SearchProperties {
 
     public void setMaxResults(int maxResults) {
         this.maxResults = maxResults;
+    }
+
+    public String getSearchEngine() {
+        return searchEngine;
+    }
+
+    public void setSearchEngine(String searchEngine) {
+        this.searchEngine = searchEngine;
+    }
+
+    public String getRecencyFilter() {
+        return recencyFilter;
+    }
+
+    public void setRecencyFilter(String recencyFilter) {
+        this.recencyFilter = recencyFilter;
+    }
+
+    public String getContentSize() {
+        return contentSize;
+    }
+
+    public void setContentSize(String contentSize) {
+        this.contentSize = contentSize;
     }
 }
