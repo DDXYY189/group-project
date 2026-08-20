@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
-	<artifactId>group-demo</artifactId>
+	<artifactId>demo-wkx</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>
@@ -36,17 +36,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-jdbc</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-
-		<dependency>
 			<groupId>io.github.lith0924</groupId>
 			<artifactId>wechat-ilink-sdk</artifactId>
 			<version>2.3.3</version>
@@ -54,11 +43,15 @@
 
 		<dependency>
 			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.zxing</groupId>
 			<artifactId>javase</artifactId>
 			<version>3.5.3</version>
 		</dependency>
 
-		<!-- 农历日期计算（天干地支年、生肖、节气） -->
 		<dependency>
 			<groupId>cn.6tail</groupId>
 			<artifactId>lunar</artifactId>
