@@ -1,9 +1,11 @@
 package com.example.group_demo.controller;
 
 import com.example.group_demo.bot.BotService;
+import com.example.group_demo.llm.ConversationMemoryService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -15,9 +17,11 @@ import java.util.Map;
 public class BotController {
 
     private final BotService botService;
+    private final ConversationMemoryService memoryService;
 
-    public BotController(BotService botService) {
+    public BotController(BotService botService, ConversationMemoryService memoryService) {
         this.botService = botService;
+        this.memoryService = memoryService;
     }
 
     @GetMapping("/status")
@@ -32,6 +36,20 @@ public class BotController {
             result.put("botId", botService.getLoginContext().getBotId());
             result.put("userId", botService.getLoginContext().getUserId());
         }
+        return result;
+    }
+
+    @PostMapping("/relogin")
+    public ResponseEntity<Void> relogin() {
+        botService.startLogin();
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/memory/clear")
+    public Map<String, Object> clearMemory() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("cleared", true);
+        result.put("deleted", memoryService.clearAll());
         return result;
     }
 

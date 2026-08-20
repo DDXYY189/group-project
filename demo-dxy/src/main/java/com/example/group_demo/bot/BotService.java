@@ -34,8 +34,6 @@ import java.util.Base64;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Service
 public class BotService implements ApplicationRunner {
@@ -49,11 +47,7 @@ public class BotService implements ApplicationRunner {
     private final ImageService imageService;
     private final ToolRegistry toolRegistry;
     private final ImageTextMerger imageTextMerger;
-    private final ExecutorService messageExecutor = Executors.newSingleThreadExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "ilink-message-handler");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private final MessageDispatcher messageDispatcher;
 
     private volatile byte[] qrPng;
     private volatile String loginError;
@@ -61,7 +55,8 @@ public class BotService implements ApplicationRunner {
 
     public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService,
                       IntentService intentService, ImageService imageService,
-                      ToolRegistry toolRegistry, ImageTextMerger imageTextMerger) {
+                      ToolRegistry toolRegistry, ImageTextMerger imageTextMerger,
+                      MessageDispatcher messageDispatcher) {
         this.client = client;
         this.llmService = llmService;
         this.voiceService = voiceService;
@@ -69,6 +64,7 @@ public class BotService implements ApplicationRunner {
         this.imageService = imageService;
         this.toolRegistry = toolRegistry;
         this.imageTextMerger = imageTextMerger;
+        this.messageDispatcher = messageDispatcher;
     }
 
     @Override
@@ -77,6 +73,8 @@ public class BotService implements ApplicationRunner {
     }
 
     public void startLogin() {
+        this.qrPng = null;
+        this.loginError = null;
         try {
             String qrContent = client.executeLogin();
             this.qrPng = buildQrPng(qrContent);
@@ -98,58 +96,65 @@ public class BotService implements ApplicationRunner {
     }
 
     public void onMessages(List<WeixinMessage> messages) {
-        messageExecutor.execute(() -> handleMessages(messages));
-    }
-
-    private void handleMessages(List<WeixinMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return;
+        }
         for (WeixinMessage message : messages) {
+            if (message == null) {
+                continue;
+            }
             String fromUserId = message.getFrom_user_id();
             if (fromUserId == null) {
                 log.info("收到无发送人的消息 messageId={}", message.getMessage_id());
                 continue;
             }
-            if (isSelfMessage(message)) {
-                log.info("跳过机器人自身消息 from={}", fromUserId);
-                continue;
+            messageDispatcher.submit(fromUserId, () -> handleMessage(message));
+        }
+    }
+
+    private void handleMessage(WeixinMessage message) {
+        String fromUserId = message.getFrom_user_id();
+        if (isSelfMessage(message)) {
+            log.info("跳过机器人自身消息 from={}", fromUserId);
+            return;
+        }
+        List<MessageItem> items = message.getItem_list();
+        if (items == null || items.isEmpty()) {
+            log.info("收到无内容的消息 from={} messageId={}", fromUserId, message.getMessage_id());
+            return;
+        }
+        log.info("收到消息 from={} itemCount={} messageId={}",
+            fromUserId, items.size(), message.getMessage_id());
+        List<String> texts = new ArrayList<>();
+        MessageItem imageItem = null;
+        MessageItem voiceItem = null;
+        for (MessageItem item : items) {
+            log.info("消息项 from={} itemType={}", fromUserId, item.getType());
+            TextItem textItem = item.getText_item();
+            if (textItem != null && textItem.getText() != null) {
+                texts.add(textItem.getText());
             }
-            List<MessageItem> items = message.getItem_list();
-            if (items == null || items.isEmpty()) {
-                log.info("收到无内容的消息 from={} messageId={}", fromUserId, message.getMessage_id());
-                continue;
+            if (item.getImage_item() != null && imageItem == null) {
+                imageItem = item;
             }
-            log.info("收到消息 from={} itemCount={} messageId={}",
-                fromUserId, items.size(), message.getMessage_id());
-            List<String> texts = new ArrayList<>();
-            MessageItem imageItem = null;
-            MessageItem voiceItem = null;
-            for (MessageItem item : items) {
-                log.info("消息项 from={} itemType={}", fromUserId, item.getType());
-                TextItem textItem = item.getText_item();
-                if (textItem != null && textItem.getText() != null) {
-                    texts.add(textItem.getText());
-                }
-                if (item.getImage_item() != null && imageItem == null) {
-                    imageItem = item;
-                }
-                if (item.getVoice_item() != null && voiceItem == null) {
-                    voiceItem = item;
-                }
+            if (item.getVoice_item() != null && voiceItem == null) {
+                voiceItem = item;
             }
-            try {
-                String combinedText = String.join(" ", texts).trim();
-                if (imageItem != null && !combinedText.isEmpty()) {
-                    handleImageWithText(fromUserId, imageItem, combinedText);
-                } else if (imageItem != null) {
-                    handleUserImage(fromUserId, imageItem);
-                } else if (voiceItem != null) {
-                    handleUserVoice(fromUserId, voiceItem);
-                } else if (!combinedText.isEmpty()) {
-                    handleUserText(fromUserId, combinedText);
-                }
-            } catch (Exception e) {
-                log.error("处理消息失败 fromUserId={}", fromUserId, e);
-                safeSendText(fromUserId, "消息处理失败：" + e.getMessage());
+        }
+        try {
+            String combinedText = String.join(" ", texts).trim();
+            if (imageItem != null && !combinedText.isEmpty()) {
+                handleImageWithText(fromUserId, imageItem, combinedText);
+            } else if (imageItem != null) {
+                handleUserImage(fromUserId, imageItem);
+            } else if (voiceItem != null) {
+                handleUserVoice(fromUserId, voiceItem);
+            } else if (!combinedText.isEmpty()) {
+                handleUserText(fromUserId, combinedText);
             }
+        } catch (Exception e) {
+            log.error("处理消息失败 fromUserId={}", fromUserId, e);
+            safeSendText(fromUserId, "消息处理失败：" + e.getMessage());
         }
     }
 

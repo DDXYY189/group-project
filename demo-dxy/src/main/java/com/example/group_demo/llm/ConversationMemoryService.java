@@ -59,6 +59,10 @@ public class ConversationMemoryService {
             "DELETE FROM conversation_message WHERE user_id = ? AND created_at < ?",
             userId, cutoff
         );
+        jdbcTemplate.update(
+            "DELETE FROM conversation_summary WHERE user_id = ? AND updated_at < ?",
+            userId, cutoff
+        );
 
         String summary = jdbcTemplate.query(
             "SELECT summary FROM conversation_summary WHERE user_id = ?",
@@ -116,6 +120,12 @@ public class ConversationMemoryService {
         }
         jdbcTemplate.update("DELETE FROM conversation_message WHERE user_id = ?", userId);
         jdbcTemplate.update("DELETE FROM conversation_summary WHERE user_id = ?", userId);
+    }
+
+    public int clearAll() {
+        int messages = jdbcTemplate.update("DELETE FROM conversation_message");
+        int summaries = jdbcTemplate.update("DELETE FROM conversation_summary");
+        return messages + summaries;
     }
 
     private void trim(String userId) {

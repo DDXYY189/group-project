@@ -7,6 +7,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import com.example.group_demo.config.RestClientFactory;
+import com.example.group_demo.tool.BotTool;
 import com.example.group_demo.tool.ToolRegistry;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
@@ -19,7 +21,8 @@ import java.util.Map;
 public class LlmService {
 
     private static final Logger log = LoggerFactory.getLogger(LlmService.class);
-    private static final String SYSTEM_PROMPT = "你是微信机器人助手，请用简洁的中文回答问题。";
+    private static final String SYSTEM_PROMPT =
+        "你是微信机器人助手，请用简洁的中文回答问题。工具返回的列表内容必须完整逐条展示给用户，不要只做概括。";
 
     private final LlmProperties properties;
     private final RestClient restClient;
@@ -36,7 +39,7 @@ public class LlmService {
         this.properties = properties;
         this.conversationMemory = conversationMemory;
         this.toolRegistry = toolRegistry;
-        this.restClient = RestClient.builder().baseUrl(properties.getBaseUrl()).build();
+        this.restClient = RestClientFactory.builder().baseUrl(properties.getBaseUrl()).build();
     }
 
     public boolean isConfigured() {
@@ -66,16 +69,23 @@ public class LlmService {
 
         List<Map<String, Object>> toolSchemas = toolRegistry.jsonSchemas();
         int maxRounds = Math.max(1, properties.getToolMaxRounds());
+        String lastToolResult = null;
         for (int round = 0; round < maxRounds; round++) {
             ChatResponse response = completeResponse(properties.getModel(), messages, toolSchemas);
             ChatResponse.Message message = firstMessage(response);
             List<ToolCall> toolCalls = message.toolCalls();
             if (toolCalls == null || toolCalls.isEmpty()) {
                 String content = message.content();
+                String reply;
                 if (content == null || content.isBlank()) {
-                    throw new IllegalStateException("LLM 返回内容为空");
+                    if (lastToolResult == null) {
+                        throw new IllegalStateException("LLM 返回内容为空");
+                    }
+                    log.warn("LLM 最终回复为空，回退为最后一次工具结果");
+                    reply = lastToolResult;
+                } else {
+                    reply = content.trim();
                 }
-                String reply = content.trim();
                 conversationMemory.append(userId, "user", userText);
                 conversationMemory.append(userId, "assistant", reply);
                 log.info("LLM 工具对话完成 model={} rounds={}", properties.getModel(), round + 1);
@@ -83,17 +93,37 @@ public class LlmService {
             }
 
             messages.add(toAssistantToolMessage(message, toolCalls));
+            String relayedResult = null;
+            String relayedToolName = null;
             for (ToolCall toolCall : toolCalls) {
                 String callId = toolCall.id() == null ? "call_" + System.nanoTime() : toolCall.id();
                 String toolName = toolCall.function() == null ? null : toolCall.function().name();
                 String arguments = toolCall.function() == null ? "{}" : toolCall.function().arguments();
                 String result = toolRegistry.execute(userId, toolName, arguments);
+                lastToolResult = result;
+                BotTool tool = toolRegistry.find(toolName);
+                if (tool != null && tool.relayToUser()) {
+                    relayedResult = result;
+                    relayedToolName = toolName;
+                }
                 Map<String, Object> toolMessage = new LinkedHashMap<>();
                 toolMessage.put("role", "tool");
                 toolMessage.put("tool_call_id", callId);
                 toolMessage.put("content", result);
                 messages.add(toolMessage);
             }
+            if (relayedResult != null) {
+                log.info("工具结果直接回复 userId={} tool={}", userId, relayedToolName);
+                conversationMemory.append(userId, "user", userText);
+                conversationMemory.append(userId, "assistant", relayedResult);
+                return relayedResult;
+            }
+        }
+        if (lastToolResult != null) {
+            log.warn("LLM 工具调用达到最大轮数 {}，回退为最后一次工具结果", maxRounds);
+            conversationMemory.append(userId, "user", userText);
+            conversationMemory.append(userId, "assistant", lastToolResult);
+            return lastToolResult;
         }
         throw new IllegalStateException("LLM 工具调用超过最大轮数 " + maxRounds);
     }
@@ -135,8 +165,7 @@ public class LlmService {
                 conversationMemory.compact(userId, summary, older.size());
                 turns = recent;
             } catch (Exception e) {
-                log.warn("对话摘要生成失败，回退为最近 {} 轮原文", memoryConfig.getRecentTurns(), e);
-                turns = recent;
+                log.warn("对话摘要生成失败，本次保留完整对话上下文", e);
             }
         }
         return new ConversationMemoryService.ChatContext(summary, turns);

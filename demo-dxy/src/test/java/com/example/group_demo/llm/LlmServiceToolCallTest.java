@@ -19,7 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -29,9 +31,13 @@ class LlmServiceToolCallTest {
     private final List<String> requests = new ArrayList<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AtomicInteger callCount = new AtomicInteger();
+    private final AtomicBoolean emptyFinal = new AtomicBoolean();
+    private final AtomicReference<String> toolCallName = new AtomicReference<>("echo");
 
     @BeforeEach
     void startServer() throws IOException {
+        emptyFinal.set(false);
+        toolCallName.set("echo");
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/chat/completions", this::handleChat);
         server.start();
@@ -46,12 +52,17 @@ class LlmServiceToolCallTest {
         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         requests.add(body);
         String json;
-        if (callCount.getAndIncrement() == 0) {
+        int count = callCount.getAndIncrement();
+        if (emptyFinal.get() && count > 0) {
+            json = """
+                {"choices":[{"message":{"content":null}}]}
+                """;
+        } else if (count == 0) {
             json = """
                 {"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[
-                  {"id":"call_1","type":"function","function":{"name":"echo","arguments":"{\\"text\\":\\"你好\\"}"}}
+                  {"id":"call_1","type":"function","function":{"name":"%s","arguments":"{\\"text\\":\\"你好\\"}"}}
                 ]}}]}
-                """;
+                """.formatted(toolCallName.get());
         } else {
             json = """
                 {"choices":[{"message":{"content":"工具结果：echo:你好"}}]}
@@ -88,6 +99,35 @@ class LlmServiceToolCallTest {
         };
     }
 
+    private BotTool relayTool() {
+        return new BotTool() {
+            @Override
+            public String name() {
+                return "relay";
+            }
+
+            @Override
+            public String description() {
+                return "直接回显工具结果";
+            }
+
+            @Override
+            public Map<String, Object> parameters() {
+                return Map.of("type", "object", "properties", Map.of(), "required", List.of());
+            }
+
+            @Override
+            public String execute(String userId, JsonNode arguments) {
+                return "热点列表：1. 第一条 2. 第二条";
+            }
+
+            @Override
+            public boolean relayToUser() {
+                return true;
+            }
+        };
+    }
+
     @Test
     void runsToolCallLoopAndReturnsFinalReply() throws Exception {
         int port = server.getAddress().getPort();
@@ -115,6 +155,48 @@ class LlmServiceToolCallTest {
         assertEquals("call_1", toolMessage.path("tool_call_id").asText());
         assertEquals("echo:你好", toolMessage.path("content").asText());
 
+        assertEquals(2, memory.history("u1").size());
+    }
+
+    @Test
+    void fallsBackToToolResultWhenFinalReplyIsEmpty() throws Exception {
+        emptyFinal.set(true);
+        int port = server.getAddress().getPort();
+        LlmProperties properties = new LlmProperties();
+        properties.setApiKey("test-key");
+        properties.setBaseUrl("http://127.0.0.1:" + port);
+        properties.setModel("qwen-plus");
+        String url = "jdbc:h2:mem:tool-empty-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
+        ConversationMemoryService memory = new ConversationMemoryService(
+            new JdbcTemplate(new DriverManagerDataSource(url, "sa", "")), properties);
+        LlmService llm = new LlmService(properties, memory,
+            new ToolRegistry(List.of(echoTool())));
+
+        String reply = llm.chatWithTools("u1", "请调用工具");
+
+        assertEquals("echo:你好", reply);
+        assertEquals(2, requests.size());
+        assertEquals(2, memory.history("u1").size());
+    }
+
+    @Test
+    void relaysToolResultDirectlyWithoutWaitingForLlm() throws Exception {
+        toolCallName.set("relay");
+        int port = server.getAddress().getPort();
+        LlmProperties properties = new LlmProperties();
+        properties.setApiKey("test-key");
+        properties.setBaseUrl("http://127.0.0.1:" + port);
+        properties.setModel("qwen-plus");
+        String url = "jdbc:h2:mem:tool-relay-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
+        ConversationMemoryService memory = new ConversationMemoryService(
+            new JdbcTemplate(new DriverManagerDataSource(url, "sa", "")), properties);
+        LlmService llm = new LlmService(properties, memory,
+            new ToolRegistry(List.of(relayTool())));
+
+        String reply = llm.chatWithTools("u1", "请给我热点");
+
+        assertEquals("热点列表：1. 第一条 2. 第二条", reply);
+        assertEquals(1, requests.size());
         assertEquals(2, memory.history("u1").size());
     }
 }

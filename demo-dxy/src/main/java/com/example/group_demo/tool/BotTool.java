@@ -17,6 +17,13 @@ public interface BotTool {
 
     String execute(String userId, JsonNode arguments);
 
+    /**
+     * 返回 true 时，工具结果直接作为机器人回复发送，不再交给 LLM 二次总结。
+     */
+    default boolean relayToUser() {
+        return false;
+    }
+
     default Map<String, Object> jsonSchema() {
         return Map.of(
             "type", "function",

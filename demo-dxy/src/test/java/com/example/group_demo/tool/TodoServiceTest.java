@@ -1,6 +1,11 @@
 package com.example.group_demo.tool;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,7 +14,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TodoServiceTest {
 
-    private final TodoService todoService = new TodoService();
+    private TodoService todoService;
+
+    @BeforeEach
+    void setUp() {
+        String url = "jdbc:h2:mem:todo-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
+        todoService = new TodoService(new JdbcTemplate(new DriverManagerDataSource(url, "sa", "")));
+    }
 
     @Test
     void addListAndDone() {
@@ -37,5 +48,18 @@ class TodoServiceTest {
     @Test
     void doneUnknownReturnsMessage() {
         assertEquals("未找到待办 #99", todoService.done("u1", 99));
+    }
+
+    @Test
+    void persistsAcrossServiceInstances() {
+        String url = "jdbc:h2:mem:todo-persist-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
+        TodoService first =
+            new TodoService(new JdbcTemplate(new DriverManagerDataSource(url, "sa", "")));
+        first.add("u1", "写报告");
+
+        TodoService second =
+            new TodoService(new JdbcTemplate(new DriverManagerDataSource(url, "sa", "")));
+
+        assertTrue(second.list("u1").contains("写报告"));
     }
 }

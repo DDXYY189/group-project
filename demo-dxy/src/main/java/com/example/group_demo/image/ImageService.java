@@ -1,6 +1,7 @@
 package com.example.group_demo.image;
 
 import com.example.group_demo.llm.LlmProperties;
+import com.example.group_demo.config.RestClientFactory;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +28,13 @@ public class ImageService {
     private final RestClient restClient;
     private final HttpClient httpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
+        .connectTimeout(RestClientFactory.CONNECT_TIMEOUT)
         .build();
 
     public ImageService(LlmProperties llmProperties, ImageProperties imageProperties) {
         this.llmProperties = llmProperties;
         this.imageProperties = imageProperties;
-        this.restClient = RestClient.builder().build();
+        this.restClient = RestClientFactory.builder().build();
     }
 
     public byte[] generateImage(String prompt) throws IOException, InterruptedException {
@@ -136,7 +138,10 @@ public class ImageService {
     }
 
     private byte[] downloadImage(String imageUrl) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(imageUrl)).GET().build();
+        HttpRequest request = HttpRequest.newBuilder(URI.create(imageUrl))
+            .timeout(RestClientFactory.READ_TIMEOUT)
+            .GET()
+            .build();
         HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
         if (response.statusCode() != 200) {
             throw new IllegalStateException("图片下载失败 status=" + response.statusCode());

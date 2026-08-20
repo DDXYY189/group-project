@@ -1,45 +1,67 @@
 package com.example.group_demo.tool;
 
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
+import java.sql.PreparedStatement;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class TodoService {
 
-    private final Map<String, Deque<TodoItem>> todosByUser = new ConcurrentHashMap<>();
-    private final AtomicInteger nextId = new AtomicInteger(1);
+    private final JdbcTemplate jdbcTemplate;
+
+    public TodoService(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+        createSchema();
+    }
+
+    private void createSchema() {
+        jdbcTemplate.execute("""
+            CREATE TABLE IF NOT EXISTS todo_item (
+              id BIGINT AUTO_INCREMENT PRIMARY KEY,
+              user_id VARCHAR(128) NOT NULL,
+              text CLOB NOT NULL,
+              created_at BIGINT NOT NULL
+            )
+            """);
+    }
 
     public String add(String userId, String text) {
         String content = text == null ? "" : text.trim();
         if (content.isEmpty()) {
             throw new IllegalArgumentException("待办内容不能为空");
         }
-        Deque<TodoItem> items = todosByUser.computeIfAbsent(userId, key -> new ArrayDeque<>());
-        synchronized (items) {
-            int id = nextId.getAndIncrement();
-            items.addLast(new TodoItem(id, content));
-            return "已添加待办 #" + id + "：" + content;
-        }
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO todo_item (user_id, text, created_at) VALUES (?, ?, ?)",
+                new String[]{"id"}
+            );
+            statement.setString(1, userId);
+            statement.setString(2, content);
+            statement.setLong(3, System.currentTimeMillis());
+            return statement;
+        }, keyHolder);
+        Number key = keyHolder.getKey();
+        int id = key == null ? 0 : key.intValue();
+        return "已添加待办 #" + id + "：" + content;
     }
 
     public String list(String userId) {
-        Deque<TodoItem> items = todosByUser.get(userId);
-        if (items == null || items.isEmpty()) {
+        List<TodoItem> items = jdbcTemplate.query(
+            "SELECT id, text FROM todo_item WHERE user_id = ? ORDER BY id ASC",
+            (rs, rowNum) -> new TodoItem(rs.getInt(1), rs.getString(2)),
+            userId
+        );
+        if (items.isEmpty()) {
             return "暂无待办事项";
         }
-        List<String> lines = new ArrayList<>();
-        synchronized (items) {
-            for (TodoItem item : items) {
-                lines.add("#" + item.id() + " " + item.text());
-            }
-        }
+        List<String> lines = items.stream()
+            .map(item -> "#" + item.id() + " " + item.text())
+            .toList();
         return "当前待办：\n" + String.join("\n", lines);
     }
 
@@ -47,17 +69,11 @@ public class TodoService {
         if (id <= 0) {
             throw new IllegalArgumentException("待办编号无效: " + id);
         }
-        Deque<TodoItem> items = todosByUser.get(userId);
-        if (items == null) {
-            return "未找到待办 #" + id;
-        }
-        synchronized (items) {
-            boolean removed = items.removeIf(item -> item.id() == id);
-            if (!removed) {
-                return "未找到待办 #" + id;
-            }
-        }
-        return "已完成待办 #" + id;
+        int deleted = jdbcTemplate.update(
+            "DELETE FROM todo_item WHERE id = ? AND user_id = ?",
+            id, userId
+        );
+        return deleted > 0 ? "已完成待办 #" + id : "未找到待办 #" + id;
     }
 
     public record TodoItem(int id, String text) {

@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import com.example.group_demo.config.RestClientFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,7 @@ public class WeatherService {
 
     public WeatherService(WeatherProperties properties) {
         this.properties = properties;
-        this.restClient = RestClient.builder().build();
+        this.restClient = RestClientFactory.builder().build();
     }
 
     public String getWeatherText(String location) {

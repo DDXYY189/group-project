@@ -37,6 +37,10 @@ public class ToolRegistry {
         return List.copyOf(tools.keySet());
     }
 
+    public BotTool find(String name) {
+        return tools.get(name);
+    }
+
     public List<Map<String, Object>> jsonSchemas() {
         return all().stream().map(BotTool::jsonSchema).toList();
     }

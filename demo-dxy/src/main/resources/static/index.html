@@ -417,6 +417,21 @@
             height: 16px;
         }
 
+        .danger-btn {
+            border-color: #fecaca;
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .danger-btn:hover {
+            background: #fee2e2;
+        }
+
+        .danger-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .online-state {
             padding: 10px 0 2px;
             text-align: center;
@@ -720,12 +735,12 @@
                     <img id="qr" src="/api/bot/qr.png" alt="微信登录二维码">
                 </div>
                 <p class="qr-hint" id="qrHint">打开微信扫一扫，扫描上方二维码</p>
-                <button type="button" class="refresh-btn" onclick="refresh()">
+                <button type="button" class="refresh-btn" onclick="refreshOrRelogin()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
                         <path d="M21 3v6h-6"/>
                     </svg>
-                    刷新状态
+                    <span id="refreshBtnText">刷新状态</span>
                 </button>
             </div>
 
@@ -738,6 +753,15 @@
                 <h3>机器人已上线</h3>
                 <p class="online-id" id="onlineIds">--</p>
             </div>
+
+            <button type="button" class="refresh-btn danger-btn" id="clearMemoryBtn" onclick="clearMemory()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                <span id="clearMemoryText">清除记忆</span>
+            </button>
 
             <div class="steps">
                 <div class="step active" id="step1"><i>1</i><span>打开微信扫一扫</span></div>
@@ -758,10 +782,12 @@
         manage_todo: "待办管理",
         get_current_time: "当前时间",
         web_search: "联网搜索",
-        get_hot_news: "热点资讯"
+        get_hot_news: "热点资讯",
+        clear_memory: "清除记忆"
     };
 
     const $ = (id) => document.getElementById(id);
+    let loggedIn = false;
 
     function connectionLabel(raw) {
         const value = String(raw || "").toLowerCase();
@@ -803,8 +829,9 @@
     }
 
     function render(data) {
-        const loggedIn = !!data.loggedIn;
+        loggedIn = !!data.loggedIn;
         const hasError = !!data.loginError;
+        $("refreshBtnText").textContent = loggedIn ? "刷新状态" : "重新登录";
 
         const pill = $("headerPill");
         pill.className = "pill " + (loggedIn ? "ok" : (hasError ? "err" : "wait"));
@@ -864,6 +891,7 @@
     }
 
     function renderUnreachable() {
+        $("refreshBtnText").textContent = "重新登录";
         const pill = $("headerPill");
         pill.className = "pill err";
         $("headerPillText").textContent = "服务不可用";
@@ -885,6 +913,41 @@
             render(await response.json());
         } catch (e) {
             renderUnreachable();
+        }
+    }
+
+    async function refreshOrRelogin() {
+        if (!loggedIn) {
+            try {
+                await fetch("/api/bot/relogin", { method: "POST" });
+            } catch (e) {
+                // 后端不可用时仍刷新一次以显示错误状态
+            }
+        }
+        refresh();
+    }
+
+    async function clearMemory() {
+        if (!confirm("确定清除机器人保存的全部对话记忆吗？此操作不可恢复。")) {
+            return;
+        }
+        const button = $("clearMemoryBtn");
+        const text = $("clearMemoryText");
+        const originalText = text.textContent;
+        button.disabled = true;
+        text.textContent = "清除中…";
+        try {
+            const response = await fetch("/api/bot/memory/clear", { method: "POST" });
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            const data = await response.json();
+            alert("记忆已清除，共删除 " + data.deleted + " 条记录。");
+        } catch (e) {
+            alert("清除失败：" + e.message);
+        } finally {
+            button.disabled = false;
+            text.textContent = originalText;
         }
     }
 

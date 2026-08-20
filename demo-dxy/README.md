@@ -33,4 +33,6 @@ mvn spring-boot:run
 - `llm.vision-model`：图片理解模型，默认 `qwen-vl-plus`
 - `llm.base-url`：OpenAI 兼容地址，默认 `https://dashscope.aliyuncs.com/compatible-mode/v1`
 
-语音消息目前只回复占位提示，ASR/TTS + SILK 转换链路待接入。
+语音消息支持 ASR 转写、edge-tts 合成，并以 MP3 文件回复，失败时自动回退为文本。
+
+已内置工具：天气查询、待办管理、当前时间、联网搜索、热点资讯、清除记忆。对话记忆支持长时摘要与 TTL 过期。

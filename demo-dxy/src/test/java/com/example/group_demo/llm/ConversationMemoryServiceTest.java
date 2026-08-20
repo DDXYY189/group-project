@@ -76,6 +76,43 @@ class ConversationMemoryServiceTest {
     }
 
     @Test
+    void clearsAllUsersMemory() {
+        ConversationMemoryService memory = newMemory(5);
+        memory.append("u1", "user", "hello");
+        memory.append("u2", "user", "world");
+        memory.compact("u1", "旧摘要", 1);
+
+        int deleted = memory.clearAll();
+
+        assertTrue(deleted >= 2);
+        assertTrue(memory.history("u1").isEmpty());
+        assertTrue(memory.history("u2").isEmpty());
+        assertEquals(null, memory.load("u1").summary());
+    }
+
+    @Test
+    void expiredSummaryIsIgnored() {
+        String url = "jdbc:h2:mem:ttl-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
+        DriverManagerDataSource dataSource = new DriverManagerDataSource(url, "sa", "");
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        LlmProperties properties = new LlmProperties();
+        properties.getMemory().setMaxTurns(5);
+        ConversationMemoryService memory = new ConversationMemoryService(jdbcTemplate, properties);
+        memory.append("u1", "user", "a");
+        memory.append("u1", "assistant", "b");
+        memory.compact("u1", "旧摘要", 2);
+
+        jdbcTemplate.update(
+            "UPDATE conversation_summary SET updated_at = ? WHERE user_id = ?",
+            System.currentTimeMillis() - 61 * 60_000L,
+            "u1"
+        );
+
+        ConversationMemoryService.ChatContext context = memory.load("u1");
+        assertEquals(null, context.summary());
+    }
+
+    @Test
     void persistsAcrossServiceInstances() {
         String url = "jdbc:h2:mem:persist-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
         LlmProperties properties = new LlmProperties();

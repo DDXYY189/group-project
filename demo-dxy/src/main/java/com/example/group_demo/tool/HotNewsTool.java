@@ -25,6 +25,11 @@ public class HotNewsTool implements BotTool {
     }
 
     @Override
+    public boolean relayToUser() {
+        return true;
+    }
+
+    @Override
     public String description() {
         return "获取今日实时新闻热点摘要（每天 60 秒读懂世界），返回中文文本。"
             + "当用户询问今天有什么热点、今日新闻、热点资讯时调用。";
