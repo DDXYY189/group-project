@@ -1,0 +1,63 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: wechat-llm-bot
+
+# 微信 iLink Bot 配置
+wechat:
+  bot:
+    # 启动时是否自动执行扫码登录
+    auto-login: true
+    # 消息长轮询间隔(毫秒)
+    poll-interval-ms: 1000
+    # 心跳间隔(毫秒)
+    heartbeat-interval-ms: 30000
+
+# 大模型配置（通义千问 DashScope）
+llm:
+  dashscope:
+    # 百炼 API Key，请前往 https://bailian.console.aliyun.com/ 申请
+    # 必须通过环境变量 DASHSCOPE_API_KEY 注入；未设置时程序将启动失败
+    api-key: ${DASHSCOPE_API_KEY}
+    base-url: https://dashscope.aliyuncs.com
+    chat:
+      model: qwen-plus
+      system-prompt: "你是一个接入微信的智能助手，回答简洁友好。当用户要求画图时，提示用户发送「画 描述」来生成图片。"
+      # 单用户保留的对话轮数(一问一答算2条)
+      max-history: 20
+    image:
+      model: wanx-v1
+      size: "1024*1024"
+      n: 1
+    tts:
+      # cosyvoice-v3-flash 支持童声音色
+      model: cosyvoice-v3-flash
+      # longhuhu_v3：天真活泼童声(6-10岁)，最接近奶龙可爱风格
+      # 备选：longniuniu_v3(阳光男孩)、longshanshan_v3(戏剧童声)
+      voice: longhuhu_v3
+      # 非流式 HTTP API 不带 format/sample_rate 会返回 mp3@22050Hz（默认）
+      # 流式 WebSocket API 在 run-task 中显式请求 mp3@22050Hz
+      # 两通道输出格式一致，文件扩展名与实际音频格式匹配
+      format: mp3
+      sample-rate: 22050
+    asr:
+      model: qwen3-asr-flash
+    vision:
+      # Qwen-VL-Plus：通义千问视觉理解模型，支持图片理解/OCR/图表解读
+      model: qwen-vl-plus
+    weather:
+      # 和风天气 API Key，前往 https://dev.qweather.com/ 注册获取
+      api-key: ${QWEATHER_API_KEY:}
+      # API Host：在控制台 https://console.qweather.com/project 查看你的专属主机
+      host: mu7jpk64xd.re.qweatherapi.com
+      # 天气缓存分钟数（避免频繁调用）
+      cache-minutes: 30
+    intent:
+      # 意图识别模型（用 qwen-plus 兼顾速度和准确度）
+      model: qwen-plus
+
+logging:
+  level:
+    com.example.demo: DEBUG

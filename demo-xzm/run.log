@@ -1,0 +1,98 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< com.example:demo >--------------------------
+[INFO] Building  0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.1.0:run (default-cli) > test-compile @ demo >>>
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ demo ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ demo ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ demo ---
+[INFO] skip non existing resourceDirectory D:\group-code\group-project\demo-xzm\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ demo ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:4.1.0:run (default-cli) < test-compile @ demo <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.1.0:run (default-cli) @ demo ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.0)
+
+2026-08-17T16:39:12.905+08:00  INFO 19856 --- [wechat-llm-bot] [           main] com.example.demo.DemoApplication         : Starting DemoApplication using Java 26 with PID 19856 (D:\group-code\group-project\demo-xzm\target\classes started by 91831 in D:\group-code\group-project\demo-xzm)
+2026-08-17T16:39:12.906+08:00 DEBUG 19856 --- [wechat-llm-bot] [           main] com.example.demo.DemoApplication         : Running with Spring Boot v4.1.0, Spring v7.0.8
+2026-08-17T16:39:12.906+08:00  INFO 19856 --- [wechat-llm-bot] [           main] com.example.demo.DemoApplication         : No active profile set, falling back to 1 default profile: "default"
+2026-08-17T16:39:13.422+08:00  INFO 19856 --- [wechat-llm-bot] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-08-17T16:39:13.431+08:00  INFO 19856 --- [wechat-llm-bot] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-08-17T16:39:13.432+08:00  INFO 19856 --- [wechat-llm-bot] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.22]
+2026-08-17T16:39:13.471+08:00  INFO 19856 --- [wechat-llm-bot] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 529 ms
+2026-08-17T16:39:13.868+08:00  INFO 19856 --- [wechat-llm-bot] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-08-17T16:39:13.871+08:00  INFO 19856 --- [wechat-llm-bot] [           main] com.example.demo.DemoApplication         : Started DemoApplication in 1.242 seconds (process running for 1.52)
+
+========== ����΢��ɨ���·���ά���¼ ==========
+��?????�� ��  �{�{��???�{ �{��  ?�{? ?�{ ��?????��
+�� ������ �� �����{ ���{?��??? ��?�{�{�� �� �{ �� ������ ��
+�� ??? �� �{���� ?�{ ?���{�{�{���{��?????�{ �� ??? ��
+??????? ? ���{? ���{���{? ?�{?�{? ���{�� ???????
+?��  ��??�{ �{? ?�{?����???�{??�{�{ �{�{��  ?�{?����?
+?  ?�{ ??�{�{? �{?�{��?�{?  �{�����{ �{? ??�� ���{?�{
+�� ?�{�{�{???�{�{?�{?���{��???�{??�{�{�� �� ��??�{�{���{?
+�����{ ?�{? �{?����?��?? ��? ?�{?���{ �{�� ��?��?�{�{�{ 
+�{����?  ?�����{? ?���{?��?�{?�{���{�{?�{ ���{?? �{�{���{?
+ �� �� �{?�{��   �{ �{��?�{�{�{ �������� ��? ??�{�� �{�{ 
+  ??�{ ??�{ ??�{??�{��??????���{�{?���{??���{�{����?
+�{���{���� ?�{�{�{����?��?? ���� ?�{������ �{?�{�{��  ?���{ 
+�{?�{���� ?��? ? ?���{���{?? �{?�{�{? ?�{�{ ? �{ ����?
+  �{�{��??�{�{?  �{ �{?�����{ �{��?���{?��??�{��   ���{ 
+?? ?? ? �{�{??�{??�{�{?�{?�{?�{�{?�{ ?��???����?  
+��?????�� �{�{����?��???�{�{ �{�{��?�� �{�{�� ? ��?��  
+�� ������ �� ?�{? ?���{�{ ???�{���{��?�{ �{?����??�{?�{�{
+�� ??? �� �{ �{ �{ �{�� ��?  ����??? ??�{?��  ���{ 
+??????? ?  ? ?? ???? ?  ?  ? ???? ???
+
+==============================================
+������������� http://localhost:8080/bot/qrcode �鿴��ά��
+2026-08-17T16:41:38.469+08:00 ERROR 19856 --- [wechat-llm-bot] [wechat-bot-poll] c.example.demo.wechat.WechatBotRunner    : 微信登录/轮询失败
+
+java.util.concurrent.ExecutionException: com.github.wechat.ilink.sdk.core.exception.ConnectFailedException: qrcode expired
+	at java.base/java.util.concurrent.CompletableFuture.wrapInExecutionException(CompletableFuture.java:345) ~[na:na]
+	at java.base/java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:440) ~[na:na]
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2094) ~[na:na]
+	at com.example.demo.wechat.WechatBotRunner.loginAndPoll(WechatBotRunner.java:73) ~[classes/:na]
+	at java.base/java.lang.Thread.run(Thread.java:1516) ~[na:na]
+Caused by: com.github.wechat.ilink.sdk.core.exception.ConnectFailedException: qrcode expired
+	at com.github.wechat.ilink.sdk.service.LoginService.lambda$startLoginPolling$0(LoginService.java:81) ~[wechat-ilink-sdk-2.3.3.jar:na]
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1789) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090) ~[na:na]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614) ~[na:na]
+	... 1 common frames omitted
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  04:09 min
+[INFO] Finished at: 2026-08-17T16:43:19+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.1.0:run (default-cli) on project demo: Process terminated with exit code: -1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

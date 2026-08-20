@@ -18,12 +18,12 @@ public class WeatherTool implements BotTool {
 
     @Override
     public String name() {
-        return "query_weather";
+        return "get_weather";
     }
 
     @Override
     public String description() {
-        return "查询指定城市当前的天气和温度，返回中文文本。当用户询问某个城市的天气时调用。";
+        return "获取指定城市的实时天气信息，包括气温、体感温度、天气状况、风向风力、湿度等。当用户询问天气、气温、下雨、穿什么衣服等问题时调用此工具。";
     }
 
     @Override
@@ -31,22 +31,22 @@ public class WeatherTool implements BotTool {
         return Map.of(
             "type", "object",
             "properties", Map.of(
-                "location", Map.of(
+                "city", Map.of(
                     "type", "string",
-                    "description", "城市名，例如：北京、上海、广州"
+                    "description", "城市名称，如北京、上海、广州、深圳、杭州、成都、武汉、西安等"
                 )
             ),
-            "required", List.of("location"),
+            "required", List.of("city"),
             "additionalProperties", false
         );
     }
 
     @Override
     public String execute(String userId, JsonNode arguments) {
-        String location = arguments.path("location").asText("").trim();
-        if (location.isEmpty()) {
-            throw new IllegalArgumentException("缺少 location 参数");
+        String city = arguments.path("city").asText("").trim();
+        if (city.isEmpty()) {
+            city = "北京";
         }
-        return weatherService.getWeatherText(location);
+        return weatherService.getWeatherText(city);
     }
 }
