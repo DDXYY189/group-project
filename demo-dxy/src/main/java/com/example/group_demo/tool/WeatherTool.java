@@ -7,10 +7,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 天气查询工具：查询指定城市实时天气 + 3天预报 + 出行建议。
- * 心知天气(Seniverse) 为主，Open-Meteo 为备用源。
- */
 @Service
 public class WeatherTool implements BotTool {
 
@@ -27,8 +23,7 @@ public class WeatherTool implements BotTool {
 
     @Override
     public String description() {
-        return "查询指定城市的实时天气和3天预报，包括当前温度、天气状况、湿度、风向、"
-                + "未来3天预报和出行建议。当用户询问天气、气温、穿什么衣服、是否需要带伞时调用。";
+        return "查询指定城市当前的天气和温度，返回中文文本。当用户询问某个城市的天气时调用。";
     }
 
     @Override
@@ -38,7 +33,7 @@ public class WeatherTool implements BotTool {
             "properties", Map.of(
                 "location", Map.of(
                     "type", "string",
-                    "description", "城市名，例如：北京、上海、广州、深圳、杭州、沭阳、宿迁等"
+                    "description", "城市名，例如：北京、上海、广州"
                 )
             ),
             "required", List.of("location"),

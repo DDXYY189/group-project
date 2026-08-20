@@ -21,6 +21,3 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
-
-# Sensitive config (contains API keys) - use application.properties.example as template
-demo-wkx/src/main/resources/application.properties
