@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SearchProperties {
 
     private String apiKey = "";
-    private String baseUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+    private String baseUrl = "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions";
     private String model = "glm-4-plus";
     private int maxResults = 10;
     private String searchEngine = "search_pro";
