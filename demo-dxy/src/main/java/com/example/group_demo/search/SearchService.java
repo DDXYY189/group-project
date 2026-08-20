@@ -15,16 +15,11 @@ import java.util.Map;
 public class SearchService {
 
     private static final Logger log = LoggerFactory.getLogger(SearchService.class);
-    private static final int MAX_RESULTS = 50;
-
-    private static final String SEARCH_PROMPT_TEMPLATE =
-        "你是一位专业的联网搜索助手。请严格根据{search_result}中的搜索结果回答用户问题，遵循以下规则：\n"
-        + "1. 只使用搜索结果中的信息，不要编造或使用模型自身知识。\n"
-        + "2. 如果搜索结果不足以回答问题，请明确说明\"未找到相关信息\"。\n"
-        + "3. 保留关键事实：时间、地点、人物、数字等具体细节。\n"
-        + "4. 每条信息后标注来源链接（如有）。\n"
-        + "5. 对于时效性问题，优先使用最新发布的信息。\n"
-        + "6. 用简洁的中文回答，分点列出关键信息。";
+    private static final int MAX_RESULTS = 10;
+    private static final String SYSTEM_PROMPT =
+        "你是一个联网搜索助手。请根据搜索结果用简洁的中文回答用户问题，尽量保留关键事实；如果结果中有来源链接，请一并列出。";
+    private static final String SEARCH_PROMPT =
+        "请根据网络搜索结果 {search_result} 用简洁的中文回答用户问题，尽量保留关键事实；如果结果中有来源链接，请一并列出。";
 
     private final SearchProperties properties;
     private final RestClient restClient;
@@ -45,31 +40,26 @@ public class SearchService {
         }
 
         int count = Math.max(1, Math.min(MAX_RESULTS, maxResults));
-
-        Map<String, Object> webSearchParams = new LinkedHashMap<>();
-        webSearchParams.put("enable", true);
-        webSearchParams.put("search_engine", properties.getSearchEngine());
-        webSearchParams.put("search_result", true);
-        webSearchParams.put("search_prompt", SEARCH_PROMPT_TEMPLATE);
-        webSearchParams.put("count", String.valueOf(count));
-        webSearchParams.put("search_recency_filter", properties.getRecencyFilter());
-        webSearchParams.put("content_size", properties.getContentSize());
-
-        Map<String, Object> searchTool = new LinkedHashMap<>();
-        searchTool.put("type", "web_search");
-        searchTool.put("web_search", webSearchParams);
-
+        Map<String, Object> webSearch = new LinkedHashMap<>();
+        webSearch.put("enable", true);
+        webSearch.put("search_engine", properties.getEngine());
+        webSearch.put("search_result", true);
+        webSearch.put("search_prompt", SEARCH_PROMPT);
+        webSearch.put("count", count);
+        webSearch.put("content_size", "high");
+        Map<String, Object> searchTool = Map.of(
+            "type", "web_search",
+            "web_search", webSearch
+        );
         Map<String, Object> requestBody = new LinkedHashMap<>();
         requestBody.put("model", properties.getModel());
         requestBody.put("messages", List.of(
+            Map.of("role", "system", "content", SYSTEM_PROMPT),
             Map.of("role", "user", "content", trimmed)
         ));
         requestBody.put("tools", List.of(searchTool));
-        requestBody.put("temperature", 0.1);
-        requestBody.put("top_p", 0.9);
-
-        log.info("联网搜索 query=\"{}\" engine={} count={} model={}",
-            trimmed, properties.getSearchEngine(), count, properties.getModel());
+        requestBody.put("tool_choice", "auto");
+        requestBody.put("stream", false);
 
         ChatResponse response = restClient.post()
             .uri(properties.getBaseUrl())
@@ -83,9 +73,8 @@ public class SearchService {
         if (content == null || content.isBlank()) {
             throw new IllegalStateException("搜索接口返回为空");
         }
-
         String reply = content.trim();
-        log.info("联网搜索成功 query=\"{}\" reply_length={}", trimmed, reply.length());
+        log.info("联网搜索成功 query={} count={}", trimmed, count);
         return reply;
     }
 
@@ -100,6 +89,7 @@ public class SearchService {
     public record ChatResponse(List<Choice> choices) {
         public record Choice(Message message) {
         }
+
         public record Message(String role, String content) {
         }
     }
