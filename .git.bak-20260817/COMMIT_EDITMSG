@@ -1,0 +1,1 @@
+chore: 添加 exec-maven-plugin 支持 mvnw exec:java 运行
