@@ -7,7 +7,7 @@ public class SearchProperties {
 
     private String apiKey = "";
     private String baseUrl = "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions";
-    private String model = "glm-4-plus";
+    private String model = "glm-5.3";
     private int maxResults = 10;
     private String searchEngine = "search_pro";
     private String recencyFilter = "noLimit";
