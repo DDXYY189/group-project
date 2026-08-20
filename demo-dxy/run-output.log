@@ -37,16 +37,19 @@
 
  :: Spring Boot ::                (v4.1.0)
 
-2026-08-20T17:50:18.713+08:00  INFO 24680 --- [group-demo] [           main] c.e.group_demo.GroupDemoApplication      : Starting GroupDemoApplication using Java 26 with PID 24680 (D:\group-code\group-project\demo-dxy\target\classes started by 91831 in D:\group-code\group-project\demo-dxy)
-2026-08-20T17:50:18.716+08:00  INFO 24680 --- [group-demo] [           main] c.e.group_demo.GroupDemoApplication      : The following 1 profile is active: "local"
-2026-08-20T17:50:19.393+08:00  INFO 24680 --- [group-demo] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
-2026-08-20T17:50:19.404+08:00  INFO 24680 --- [group-demo] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-08-20T17:50:19.404+08:00  INFO 24680 --- [group-demo] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.22]
-2026-08-20T17:50:19.443+08:00  INFO 24680 --- [group-demo] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 693 ms
-2026-08-20T17:50:19.538+08:00  INFO 24680 --- [group-demo] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-08-20T17:50:19.705+08:00  INFO 24680 --- [group-demo] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:file:./data/conversation-memory user=SA
-2026-08-20T17:50:19.707+08:00  INFO 24680 --- [group-demo] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-08-20T17:50:20.005+08:00  INFO 24680 --- [group-demo] [           main] o.s.b.w.a.WelcomePageHandlerMapping      : Adding welcome page: class path resource [static/index.html]
-2026-08-20T17:50:20.150+08:00  INFO 24680 --- [group-demo] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
-2026-08-20T17:50:20.154+08:00  INFO 24680 --- [group-demo] [           main] c.e.group_demo.GroupDemoApplication      : Started GroupDemoApplication in 1.714 seconds (process running for 2.023)
-2026-08-20T17:50:20.450+08:00  INFO 24680 --- [group-demo] [           main] com.example.group_demo.bot.BotService    : 二维码已就绪，访问 http://localhost:8080 扫码登录
+2026-08-20T18:09:19.392+08:00  INFO 25708 --- [group-demo] [           main] c.e.group_demo.GroupDemoApplication      : Starting GroupDemoApplication using Java 26 with PID 25708 (D:\group-code\group-project\demo-dxy\target\classes started by 91831 in D:\group-code\group-project\demo-dxy)
+2026-08-20T18:09:19.396+08:00  INFO 25708 --- [group-demo] [           main] c.e.group_demo.GroupDemoApplication      : The following 1 profile is active: "local"
+2026-08-20T18:09:20.012+08:00  INFO 25708 --- [group-demo] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-08-20T18:09:20.021+08:00  INFO 25708 --- [group-demo] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-08-20T18:09:20.022+08:00  INFO 25708 --- [group-demo] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.22]
+2026-08-20T18:09:20.061+08:00  INFO 25708 --- [group-demo] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 632 ms
+2026-08-20T18:09:20.137+08:00  INFO 25708 --- [group-demo] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-08-20T18:09:20.276+08:00  INFO 25708 --- [group-demo] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:file:./data/conversation-memory user=SA
+2026-08-20T18:09:20.277+08:00  INFO 25708 --- [group-demo] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-08-20T18:09:20.544+08:00  INFO 25708 --- [group-demo] [           main] o.s.b.w.a.WelcomePageHandlerMapping      : Adding welcome page: class path resource [static/index.html]
+2026-08-20T18:09:20.688+08:00  INFO 25708 --- [group-demo] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-08-20T18:09:20.691+08:00  INFO 25708 --- [group-demo] [           main] c.e.group_demo.GroupDemoApplication      : Started GroupDemoApplication in 1.55 seconds (process running for 1.831)
+2026-08-20T18:09:20.793+08:00  INFO 25708 --- [group-demo] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-08-20T18:09:20.793+08:00  INFO 25708 --- [group-demo] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-08-20T18:09:20.794+08:00  INFO 25708 --- [group-demo] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-08-20T18:09:21.014+08:00  INFO 25708 --- [group-demo] [           main] com.example.group_demo.bot.BotService    : 二维码已就绪，访问 http://localhost:8080 扫码登录

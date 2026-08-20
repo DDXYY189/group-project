@@ -8,8 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -83,14 +81,16 @@ public class TranslateTool implements BotTool {
             throw new IllegalArgumentException("单次翻译不能超过500字符，当前长度: " + text.length());
         }
 
-        String langPair = ("auto".equals(sourceLang) ? detectLang(text) : sourceLang) + "|" + targetLang;
-        String encodedText = URLEncoder.encode(text, StandardCharsets.UTF_8);
-        String encodedLangPair = URLEncoder.encode(langPair, StandardCharsets.UTF_8);
+        String resolvedSource = "auto".equals(sourceLang) ? detectLang(text) : sourceLang;
+        String langPair = toMyMemoryLang(resolvedSource) + "|" + toMyMemoryLang(targetLang);
 
         log.info("翻译请求 userId={} source={} target={} text={}", userId, sourceLang, targetLang, text);
 
         String responseJson = restClient.get()
-            .uri("?q={text}&langpair={langPair}", encodedText, encodedLangPair)
+            .uri(uriBuilder -> uriBuilder
+                .queryParam("q", text)
+                .queryParam("langpair", langPair)
+                .build())
             .retrieve()
             .body(String.class);
 
@@ -110,6 +110,16 @@ public class TranslateTool implements BotTool {
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new RuntimeException("解析翻译API响应失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 将内部语言代码转为 MyMemory API 要求的格式（大写，中文用 ZH-CN）。
+     */
+    private String toMyMemoryLang(String lang) {
+        if ("zh".equalsIgnoreCase(lang)) {
+            return "ZH-CN";
+        }
+        return lang.toUpperCase();
     }
 
     /**
