@@ -3,32 +3,39 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
     <title>微信机器人控制台</title>
     <style>
         :root {
-            --bg-top: #f7f9fb;
-            --bg-bottom: #e9eef4;
+            --bg-top: #f6f8fa;
+            --bg-bottom: #e8eef1;
             --card: #ffffff;
-            --ink: #101828;
-            --muted: #667085;
-            --line: #d7dde6;
-            --brand: #0f766e;
-            --brand-soft: #e6f4f2;
-            --ok: #16a34a;
+            --ink: #16202c;
+            --muted: #5f6c7b;
+            --line: #d8e0e8;
+            --brand: #0e7a68;
+            --brand-strong: #0a6153;
+            --brand-soft: #e3f3f0;
+            --blue-soft: #e8f1f8;
+            --ok: #15803d;
             --ok-soft: #ecfdf3;
-            --warn: #d97706;
+            --warn: #b45309;
             --warn-soft: #fffbeb;
             --danger: #dc2626;
             --danger-soft: #fef2f2;
-            --shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+            --shadow: 0 8px 24px rgba(16, 24, 40, 0.07);
         }
 
         * {
             box-sizing: border-box;
         }
 
+        html,
         body {
             margin: 0;
+        }
+
+        body {
             min-height: 100vh;
             color: var(--ink);
             font-family: "Segoe UI", system-ui, -apple-system, "Microsoft YaHei", sans-serif;
@@ -37,7 +44,7 @@
         }
 
         .topbar {
-            max-width: 1120px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 22px 20px 6px;
             display: flex;
@@ -114,13 +121,17 @@
         }
 
         .layout {
-            max-width: 1120px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 18px 20px 40px;
             display: grid;
             grid-template-columns: minmax(0, 1fr) 360px;
             gap: 28px;
             align-items: start;
+        }
+
+        .col-main {
+            min-width: 0;
         }
 
         .section {
@@ -144,6 +155,12 @@
             margin: 0;
             font-size: 16px;
             line-height: 1.4;
+        }
+
+        .section-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .section-meta {
@@ -308,6 +325,11 @@
             color: var(--warn);
         }
 
+        .cap-status.err {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
         .cap-card h3 {
             margin: 0 0 6px;
             font-size: 15px;
@@ -318,6 +340,393 @@
             font-size: 13px;
             line-height: 1.55;
             color: var(--muted);
+        }
+
+        .search-panel {
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .search-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-input {
+            flex: 1 1 auto;
+        }
+
+        .search-count {
+            flex: 0 0 90px;
+            width: 90px;
+        }
+
+        .search-btn {
+            flex: 0 0 auto;
+            height: 38px;
+            padding: 0 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            border: none;
+            border-radius: 8px;
+            background: var(--brand);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .search-btn:hover {
+            background: var(--brand-strong);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .search-btn svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .search-output {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #0e1726;
+            color: #d7e6f0;
+            font-family: Consolas, ui-monospace, monospace;
+            font-size: 12.5px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 320px;
+            overflow: auto;
+        }
+
+        .search-error {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            background: var(--danger-soft);
+            color: var(--danger);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .chain-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .chain-card {
+            min-width: 0;
+            padding: 18px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .chain-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .chain-title {
+            min-width: 0;
+        }
+
+        .chain-title h3 {
+            margin: 0;
+            font-size: 15px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .chain-id {
+            margin: 4px 0 0;
+            font-family: Consolas, ui-monospace, monospace;
+            font-size: 12px;
+            color: var(--muted);
+            word-break: break-all;
+        }
+
+        .chain-desc {
+            margin: 10px 0 0;
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--muted);
+        }
+
+        .steps-label {
+            display: block;
+            margin: 14px 0 8px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .step-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .step-chip {
+            height: 26px;
+            padding: 0 10px;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid #c9d8ef;
+            border-radius: 999px;
+            background: var(--blue-soft);
+            color: #1d4f8a;
+            font-size: 12px;
+        }
+
+        .chain-form {
+            display: grid;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .field-row label {
+            flex: 0 0 auto;
+            min-width: 52px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .input {
+            width: 100%;
+            height: 38px;
+            min-width: 0;
+            padding: 0 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fbfcfd;
+            color: var(--ink);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .input:focus {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(14, 122, 104, 0.12);
+        }
+
+        textarea.input {
+            height: auto;
+            min-height: 84px;
+            padding: 10px 12px;
+            resize: vertical;
+            font-family: Consolas, ui-monospace, monospace;
+            line-height: 1.5;
+        }
+
+        .chain-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .chain-user {
+            width: 130px;
+            flex: 0 0 auto;
+        }
+
+        .chain-run {
+            height: 38px;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            border: none;
+            border-radius: 8px;
+            background: var(--brand);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .chain-run:hover {
+            background: var(--brand-strong);
+        }
+
+        .chain-run:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .chain-run svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .chain-state {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .chain-state.idle {
+            background: #eef2f6;
+            color: var(--muted);
+        }
+
+        .chain-state.running {
+            background: var(--warn-soft);
+            color: var(--warn);
+        }
+
+        .chain-state.ok {
+            background: var(--ok-soft);
+            color: var(--ok);
+        }
+
+        .chain-state.err {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .chain-output {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #0e1726;
+            color: #d7e6f0;
+            font-family: Consolas, ui-monospace, monospace;
+            font-size: 12.5px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 280px;
+            overflow: auto;
+        }
+
+        .chain-empty {
+            padding: 18px;
+            border: 1px dashed var(--line);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        .prompt-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .prompt-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            box-shadow: 0 4px 14px rgba(16, 24, 40, 0.04);
+        }
+
+        .prompt-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .prompt-tag {
+            flex: 0 0 auto;
+            height: 24px;
+            padding: 0 8px;
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            background: #eef2f6;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .prompt-text {
+            font-size: 13px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .copy-btn {
+            flex: 0 0 auto;
+            height: 32px;
+            padding: 0 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #f8fafc;
+            color: var(--ink);
+            font-size: 12.5px;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover {
+            background: #eef2f6;
+        }
+
+        .copy-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .icon-btn {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .icon-btn:hover {
+            background: #eef2f6;
+            color: var(--ink);
+        }
+
+        .icon-btn svg {
+            width: 16px;
+            height: 16px;
         }
 
         .qr-panel {
@@ -555,9 +964,13 @@
             }
         }
 
-        @media (max-width: 560px) {
-            .metric-grid,
-            .cap-grid {
+        @media (max-width: 760px) {
+            .cap-grid,
+            .chain-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .metric-grid {
                 grid-template-columns: minmax(0, 1fr);
             }
 
@@ -577,6 +990,419 @@
                 display: block;
                 padding-top: 0;
                 margin-bottom: 8px;
+            }
+
+            .field-row {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .field-row label {
+                min-width: 0;
+            }
+
+            .chain-actions {
+                flex-wrap: wrap;
+            }
+
+            .chain-user {
+                width: 100%;
+            }
+
+            .search-row {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .search-count {
+                width: 100%;
+                flex: none;
+            }
+
+            .search-btn {
+                width: 100%;
+            }
+
+            .prompt-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .copy-btn {
+                width: 100%;
+            }
+        }
+    </style>
+    <style id="tech-theme">
+        :root {
+            --bg-top: #05080f;
+            --bg-bottom: #0a1424;
+            --card: rgba(11, 20, 34, 0.88);
+            --ink: #d9f2f8;
+            --muted: #8aa8bd;
+            --line: rgba(34, 211, 238, 0.18);
+            --brand: #06b6d4;
+            --brand-strong: #0891b2;
+            --brand-soft: rgba(6, 182, 212, 0.12);
+            --blue-soft: rgba(34, 211, 238, 0.1);
+            --ok: #34d399;
+            --ok-soft: rgba(16, 185, 129, 0.12);
+            --warn: #fbbf24;
+            --warn-soft: rgba(245, 158, 11, 0.1);
+            --danger: #fb7185;
+            --danger-soft: rgba(244, 63, 94, 0.12);
+            --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+
+        body {
+            background-color: #05080f;
+            background-image:
+                repeating-linear-gradient(0deg, rgba(34, 211, 238, 0.04) 0 1px, transparent 1px 44px),
+                repeating-linear-gradient(90deg, rgba(34, 211, 238, 0.04) 0 1px, transparent 1px 44px),
+                linear-gradient(180deg, #05080f 0%, #0a1424 55%, #071018 100%);
+            background-attachment: fixed;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            margin-bottom: 6px;
+            padding-bottom: 12px;
+            background: rgba(5, 10, 18, 0.78);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(34, 211, 238, 0.14);
+        }
+
+        .brand-mark {
+            background: linear-gradient(135deg, #06b6d4, #10b981);
+            color: #03120f;
+            box-shadow: 0 0 18px rgba(6, 182, 212, 0.45);
+        }
+
+        .brand h1 {
+            color: #e6fbff;
+        }
+
+        .brand p {
+            color: #7dd3fc;
+        }
+
+        .pill {
+            background: rgba(15, 25, 40, 0.75);
+            border-color: rgba(34, 211, 238, 0.28);
+            color: #c9e5f0;
+            backdrop-filter: blur(8px);
+        }
+
+        .pill.ok {
+            color: #34d399;
+            border-color: rgba(52, 211, 153, 0.45);
+            box-shadow: 0 0 14px rgba(52, 211, 153, 0.18);
+        }
+
+        .pill.err {
+            color: #fb7185;
+            border-color: rgba(251, 113, 133, 0.45);
+            box-shadow: 0 0 14px rgba(251, 113, 133, 0.18);
+        }
+
+        .section + .section {
+            border-top-color: rgba(34, 211, 238, 0.12);
+        }
+
+        .section-head h2 {
+            position: relative;
+            padding-left: 14px;
+            color: #e6fbff;
+        }
+
+        .section-head h2::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 2px;
+            bottom: 2px;
+            width: 3px;
+            border-radius: 2px;
+            background: linear-gradient(180deg, #22d3ee, #10b981);
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.6);
+        }
+
+        .section-meta {
+            color: #7aa7bd;
+        }
+
+        .metric,
+        .cap-card,
+        .chain-card,
+        .prompt-row,
+        .search-panel {
+            border-color: rgba(34, 211, 238, 0.18);
+            background: rgba(11, 20, 34, 0.86);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.04), 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+
+        .metric:hover,
+        .cap-card:hover,
+        .chain-card:hover,
+        .prompt-row:hover {
+            border-color: rgba(34, 211, 238, 0.42);
+            box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.1), 0 0 22px rgba(6, 182, 212, 0.12);
+        }
+
+        .metric-label,
+        .tool-label,
+        .steps-label,
+        .field-row label {
+            color: #7aa7bd;
+        }
+
+        .metric-value,
+        .cap-card h3,
+        .chain-title h3,
+        .prompt-text,
+        .qr-top h2,
+        .online-state h3 {
+            color: #d9f2f8;
+        }
+
+        .metric-value.mono,
+        .chain-id,
+        .online-id {
+            color: #7dd3fc;
+        }
+
+        .dot.ok {
+            box-shadow: 0 0 8px rgba(52, 211, 153, 0.8);
+        }
+
+        .dot.wait {
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.8);
+        }
+
+        .dot.err {
+            box-shadow: 0 0 8px rgba(251, 113, 133, 0.8);
+        }
+
+        .chip {
+            border-color: rgba(52, 211, 153, 0.35);
+            background: rgba(16, 185, 129, 0.1);
+            color: #6ee7b7;
+        }
+
+        .chip.empty {
+            border-color: rgba(34, 211, 238, 0.2);
+            background: rgba(15, 25, 40, 0.7);
+            color: #7aa7bd;
+        }
+
+        .cap-icon {
+            background: rgba(6, 182, 212, 0.12);
+            color: #22d3ee;
+            box-shadow: inset 0 0 12px rgba(6, 182, 212, 0.12);
+        }
+
+        .cap-status.on {
+            border: 1px solid rgba(52, 211, 153, 0.4);
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+        }
+
+        .cap-status.off {
+            border: 1px solid rgba(251, 191, 36, 0.32);
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+        }
+
+        .cap-status.err {
+            border: 1px solid rgba(251, 113, 133, 0.4);
+            background: rgba(244, 63, 94, 0.1);
+            color: #fb7185;
+        }
+
+        .cap-card p,
+        .chain-desc {
+            color: #8aa8bd;
+        }
+
+        .step-chip {
+            border-color: rgba(34, 211, 238, 0.32);
+            background: rgba(34, 211, 238, 0.08);
+            color: #67e8f9;
+        }
+
+        .input {
+            border-color: rgba(34, 211, 238, 0.26);
+            background: rgba(7, 14, 24, 0.9);
+            color: #d8f3f7;
+        }
+
+        .input:focus {
+            border-color: #22d3ee;
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14), 0 0 14px rgba(34, 211, 238, 0.18);
+        }
+
+        .chain-run,
+        .search-btn {
+            border: 1px solid rgba(6, 182, 212, 0.55);
+            background: linear-gradient(135deg, #06b6d4, #10b981);
+            color: #04121a;
+            box-shadow: 0 0 16px rgba(6, 182, 212, 0.28);
+        }
+
+        .chain-run:hover,
+        .search-btn:hover {
+            background: linear-gradient(135deg, #22d3ee, #34d399);
+            box-shadow: 0 0 22px rgba(6, 182, 212, 0.4);
+        }
+
+        .refresh-btn,
+        .copy-btn,
+        .icon-btn {
+            border-color: rgba(34, 211, 238, 0.26);
+            background: rgba(15, 25, 40, 0.72);
+            color: #c9e5f0;
+        }
+
+        .refresh-btn:hover,
+        .copy-btn:hover,
+        .icon-btn:hover {
+            background: rgba(20, 34, 52, 0.9);
+            color: #67e8f9;
+        }
+
+        .danger-btn {
+            border-color: rgba(251, 113, 133, 0.42);
+            background: rgba(127, 29, 29, 0.22);
+            color: #fda4af;
+        }
+
+        .danger-btn:hover {
+            background: rgba(153, 27, 27, 0.35);
+            color: #fecdd3;
+        }
+
+        .chain-state.idle {
+            background: rgba(15, 25, 40, 0.8);
+            color: #7aa7bd;
+        }
+
+        .chain-state.running {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fbbf24;
+        }
+
+        .chain-state.ok {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+        }
+
+        .chain-state.err {
+            background: rgba(244, 63, 94, 0.12);
+            color: #fb7185;
+        }
+
+        .chain-output,
+        .search-output {
+            border: 1px solid rgba(34, 211, 238, 0.2);
+            background: #020617;
+            color: #7dd3fc;
+            box-shadow: inset 0 0 28px rgba(2, 6, 23, 0.85);
+        }
+
+        .search-error {
+            border-color: rgba(251, 113, 133, 0.45);
+            background: rgba(127, 29, 29, 0.2);
+            color: #fda4af;
+        }
+
+        .chain-empty {
+            border-color: rgba(34, 211, 238, 0.22);
+            color: #7aa7bd;
+        }
+
+        .prompt-tag {
+            background: rgba(34, 211, 238, 0.1);
+            color: #67e8f9;
+        }
+
+        .qr-panel {
+            border-color: rgba(34, 211, 238, 0.22);
+            background: rgba(9, 17, 29, 0.9);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.08), 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .qr-wrap {
+            border-color: rgba(34, 211, 238, 0.26);
+            background: #050a12;
+        }
+
+        .badge {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+        }
+
+        .badge.ok {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+        }
+
+        .badge.err {
+            background: rgba(244, 63, 94, 0.12);
+            color: #fb7185;
+        }
+
+        .online-icon {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+            box-shadow: 0 0 22px rgba(52, 211, 153, 0.2);
+        }
+
+        .step {
+            color: #7aa7bd;
+        }
+
+        .step i {
+            background: rgba(15, 25, 40, 0.9);
+            color: #67e8f9;
+        }
+
+        .step.active {
+            color: #d9f2f8;
+        }
+
+        .step.active i {
+            background: linear-gradient(135deg, #06b6d4, #10b981);
+            color: #04121a;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+        }
+
+        .step.done {
+            color: #34d399;
+        }
+
+        .step.done i {
+            background: #059669;
+            color: #04121a;
+        }
+
+        .error-box {
+            border-color: rgba(251, 113, 133, 0.45);
+            background: rgba(127, 29, 29, 0.22);
+            color: #fda4af;
+        }
+
+        .footer {
+            color: #5f7f94;
+        }
+
+        @media (max-width: 960px) {
+            .topbar {
+                position: static;
             }
         }
     </style>
@@ -626,8 +1452,11 @@
             </div>
             <div class="tool-row">
                 <span class="tool-label">已启用工具</span>
-                <div class="chips" id="toolChips">
-                    <span class="chip empty">检测中</span>
+                <div>
+                    <div class="chips" id="toolChips">
+                        <span class="chip empty">检测中</span>
+                    </div>
+                    <span class="section-meta" id="toolCount" style="display: inline-block; margin-top: 8px;">--</span>
                 </div>
             </div>
         </section>
@@ -635,91 +1464,61 @@
         <section class="section" aria-label="机器人能力">
             <div class="section-head">
                 <h2>机器人能力</h2>
-                <span class="section-meta" id="capCount">6 项能力</span>
+                <span class="section-meta" id="capCount">检测中</span>
             </div>
-            <div class="cap-grid">
-                <div class="cap-card">
-                    <div class="cap-head">
-                        <span class="cap-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                            </svg>
-                        </span>
-                        <span class="cap-status off" id="cap-llm">未配置</span>
-                    </div>
-                    <h3>文本问答</h3>
-                    <p>自然语言对话、工具调用与多轮记忆</p>
+            <div class="cap-grid" id="capGrid"></div>
+        </section>
+
+        <section class="section" aria-label="联网搜索">
+            <div class="section-head">
+                <h2>联网搜索</h2>
+                <span class="section-meta">实时信息搜索</span>
+            </div>
+            <div class="search-panel">
+                <div class="search-row">
+                    <input class="input search-input" id="searchInput" type="text"
+                           placeholder="输入要搜索的问题" autocomplete="off">
+                    <select class="input search-count" id="searchCount" aria-label="结果数量">
+                        <option value="3">3 条</option>
+                        <option value="5" selected>5 条</option>
+                        <option value="8">8 条</option>
+                        <option value="10">10 条</option>
+                    </select>
+                    <button type="button" class="search-btn" id="searchBtn" onclick="runSearch()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.3-4.3"/>
+                        </svg>
+                        <span>搜索</span>
+                    </button>
                 </div>
-                <div class="cap-card">
-                    <div class="cap-head">
-                        <span class="cap-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <circle cx="9" cy="9" r="2"/>
-                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                            </svg>
-                        </span>
-                        <span class="cap-status off" id="cap-vision">未配置</span>
-                    </div>
-                    <h3>图片理解</h3>
-                    <p>识别并理解图片内容</p>
-                </div>
-                <div class="cap-card">
-                    <div class="cap-head">
-                        <span class="cap-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/>
-                                <path d="m14 7 3 3"/>
-                            </svg>
-                        </span>
-                        <span class="cap-status off" id="cap-image">未配置</span>
-                    </div>
-                    <h3>图片生成</h3>
-                    <p>根据文字描述生成图片</p>
-                </div>
-                <div class="cap-card">
-                    <div class="cap-head">
-                        <span class="cap-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="2" width="6" height="12" rx="3"/>
-                                <path d="M5 10a7 7 0 0 0 14 0"/>
-                                <line x1="12" x2="12" y1="19" y2="22"/>
-                            </svg>
-                        </span>
-                        <span class="cap-status off" id="cap-voice">未配置</span>
-                    </div>
-                    <h3>语音消息</h3>
-                    <p>语音转写、识别与回复</p>
-                </div>
-                <div class="cap-card">
-                    <div class="cap-head">
-                        <span class="cap-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Z"/>
-                                <path d="M18 14h-8"/>
-                                <path d="M15 18h-5"/>
-                                <path d="M10 6h8v4h-8Z"/>
-                            </svg>
-                        </span>
-                        <span class="cap-status off" id="cap-news">未启用</span>
-                    </div>
-                    <h3>热点资讯</h3>
-                    <p>每日热点速览，60 秒读懂世界</p>
-                </div>
-                <div class="cap-card">
-                    <div class="cap-head">
-                        <span class="cap-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="11" cy="11" r="8"/>
-                                <path d="m21 21-4.3-4.3"/>
-                            </svg>
-                        </span>
-                        <span class="cap-status off" id="cap-search">未启用</span>
-                    </div>
-                    <h3>联网搜索</h3>
-                    <p>实时信息搜索与网页摘要</p>
+                <pre class="search-output" id="searchOutput" hidden></pre>
+                <div class="search-error" id="searchError" hidden></div>
+            </div>
+        </section>
+
+        <section class="section" aria-label="工具链演示">
+            <div class="section-head">
+                <h2>工具链演示</h2>
+                <div class="section-actions">
+                    <span class="chain-state idle" id="chainStatus">加载中</span>
+                    <button type="button" class="icon-btn" id="chainReloadBtn" title="重新加载工具链" onclick="loadChains()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                            <path d="M21 3v6h-6"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
+            <div class="chain-grid" id="chainGrid"></div>
+        </section>
+
+        <section class="section" aria-label="对话测试">
+            <div class="section-head">
+                <h2>对话测试</h2>
+                <span class="section-meta" id="promptCount"></span>
+            </div>
+            <div class="prompt-grid" id="promptGrid"></div>
         </section>
     </div>
 
@@ -763,6 +1562,15 @@
                 <span id="clearMemoryText">清除记忆</span>
             </button>
 
+            <button type="button" class="refresh-btn danger-btn" id="clearTodoBtn" onclick="clearTodo()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                <span id="clearTodoText">清空待办</span>
+            </button>
+
             <div class="steps">
                 <div class="step active" id="step1"><i>1</i><span>打开微信扫一扫</span></div>
                 <div class="step" id="step2"><i>2</i><span>扫描二维码并确认登录</span></div>
@@ -783,11 +1591,108 @@
         get_current_time: "当前时间",
         web_search: "联网搜索",
         get_hot_news: "热点资讯",
-        clear_memory: "清除记忆"
+        clear_memory: "清除记忆",
+        translate: "翻译",
+        analyze_sentiment: "情感分析",
+        generate_random: "随机数",
+        lookup_word: "单词查询",
+        weather_to_todo: "天气转待办",
+        hot_news_to_todo: "热点转待办"
     };
+
+    const ICONS = {
+        chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+        image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+        mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" x2="12" y1="19" y2="22"/>',
+        cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+        todo: '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Z"/><path d="m9 14 2 2 4-4"/>',
+        search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+        news: '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Z"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8Z"/>',
+        translate: '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
+        sentiment: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>',
+        dice: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/><path d="M12 12h.01"/>',
+        book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+        clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        route: '<circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H12"/>',
+        refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
+        trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+        play: '<path d="m6 4 14 8-14 8Z"/>',
+        copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+        check: '<path d="M20 6 9 17l-5-5"/>'
+    };
+
+    const CAPABILITIES = [
+        { id: "cap-llm", kind: "llm", label: "文本问答", desc: "自然语言对话、工具调用与多轮记忆", icon: "chat" },
+        { id: "cap-vision", kind: "llm", label: "图片理解", desc: "识别并理解图片内容", icon: "eye" },
+        { id: "cap-image", kind: "llm", label: "图片生成", desc: "根据文字描述生成图片", icon: "image" },
+        { id: "cap-voice", kind: "llm", label: "语音消息", desc: "语音转写、识别与回复", icon: "mic" },
+        { id: "cap-weather", kind: "tool", tool: "query_weather", label: "天气查询", desc: "实时天气与温度", icon: "cloud" },
+        { id: "cap-todo", kind: "tool", tool: "manage_todo", label: "待办管理", desc: "添加、查看、完成待办", icon: "todo" },
+        { id: "cap-search", kind: "tool", tool: "web_search", label: "联网搜索", desc: "实时信息搜索与摘要", icon: "search" },
+        { id: "cap-news", kind: "tool", tool: "get_hot_news", label: "热点资讯", desc: "每日热点速览", icon: "news" },
+        { id: "cap-translate", kind: "tool", tool: "translate", label: "翻译", desc: "多语言文本互译", icon: "translate" },
+        { id: "cap-sentiment", kind: "tool", tool: "analyze_sentiment", label: "情感分析", desc: "情绪识别与置信度", icon: "sentiment" },
+        { id: "cap-random", kind: "tool", tool: "generate_random", label: "随机数", desc: "抽签、掷骰子、随机整数", icon: "dice" },
+        { id: "cap-word", kind: "tool", tool: "lookup_word", label: "单词查询", desc: "英文单词中文释义", icon: "book" },
+        { id: "cap-time", kind: "tool", tool: "get_current_time", label: "当前时间", desc: "日期、时间与星期", icon: "clock" },
+        {
+            id: "cap-chain",
+            kind: "chain",
+            tool: ["weather_to_todo", "hot_news_to_todo"],
+            label: "工具链",
+            desc: "天气或热点自动记入待办",
+            icon: "route"
+        }
+    ];
+
+    const CHAIN_FORMS = {
+        weather_to_todo: {
+            title: "天气转待办",
+            icon: "cloud",
+            fields: [{ key: "location", label: "城市", type: "text", placeholder: "北京" }]
+        },
+        hot_news_to_todo: {
+            title: "热点转待办",
+            icon: "news",
+            fields: []
+        }
+    };
+
+    const PROMPTS = [
+        { tag: "工具链", text: "查询北京天气，然后把天气记到我的待办里" },
+        { tag: "工具链", text: "看看今天有什么热点，把第一条热点加到我的待办里" },
+        { tag: "天气", text: "上海今天天气怎么样？" },
+        { tag: "待办", text: "帮我把买牛奶加进待办，然后看看我有哪些待办" },
+        { tag: "翻译", text: "把这句话翻译成英文：今天的天气真好" },
+        { tag: "情感", text: "分析这句话的情感：这个方案做得太棒了！" },
+        { tag: "单词", text: "apple 这个单词是什么意思？" },
+        { tag: "随机", text: "帮我掷个骰子，1 到 6" },
+        { tag: "时间", text: "现在几点了？" },
+        { tag: "语音", text: "用语音回复我：明天见" },
+        { tag: "图片", text: "帮我画一张夕阳下的城市剪影" },
+        { tag: "记忆", text: "忘记我们之前聊过的所有内容" }
+    ];
 
     const $ = (id) => document.getElementById(id);
     let loggedIn = false;
+    let chainLoading = false;
+
+    function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "\"": "&quot;",
+            "'": "&#39;"
+        }[c]));
+    }
+
+    function iconSvg(name) {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            (ICONS[name] || ICONS.chat) +
+            "</svg>";
+    }
 
     function connectionLabel(raw) {
         const value = String(raw || "").toLowerCase();
@@ -800,32 +1705,77 @@
     function renderTools(tools) {
         const box = $("toolChips");
         box.innerHTML = "";
+        $("toolCount").textContent = "--";
         if (!Array.isArray(tools) || tools.length === 0) {
             const chip = document.createElement("span");
             chip.className = "chip empty";
             chip.textContent = "暂无工具";
             box.appendChild(chip);
+            $("toolCount").textContent = "0 个工具";
             return;
         }
         tools.forEach((name) => {
             const chip = document.createElement("span");
             chip.className = "chip";
             chip.textContent = TOOL_LABELS[name] || name;
+            chip.title = name;
             box.appendChild(chip);
+        });
+        $("toolCount").textContent = tools.length + " 个工具";
+    }
+
+    function ensureCapabilityCards() {
+        const grid = $("capGrid");
+        if (grid.children.length > 0) return;
+        CAPABILITIES.forEach((cap) => {
+            const card = document.createElement("article");
+            card.className = "cap-card";
+            card.dataset.capability = cap.id;
+            card.innerHTML =
+                '<div class="cap-head">' +
+                '<span class="cap-icon">' + iconSvg(cap.icon) + "</span>" +
+                '<span class="cap-status off">未配置</span>' +
+                "</div>" +
+                "<h3>" + escapeHtml(cap.label) + "</h3>" +
+                "<p>" + escapeHtml(cap.desc) + "</p>";
+            grid.appendChild(card);
         });
     }
 
-    function setCapability(id, enabled) {
-        const el = $(id);
-        el.textContent = enabled ? "已配置" : "未配置";
-        el.className = "cap-status " + (enabled ? "on" : "off");
+    function updateCapabilities(data) {
+        const tools = Array.isArray(data.tools) ? data.tools : [];
+        const llmOn = !!data.llmConfigured;
+        CAPABILITIES.forEach((cap) => {
+            const card = $("capGrid").querySelector('[data-capability="' + cap.id + '"]');
+            if (!card) return;
+            const status = card.querySelector(".cap-status");
+            let on = false;
+            let text = "未配置";
+            if (cap.kind === "llm") {
+                on = llmOn;
+                text = on ? "已配置" : "未配置";
+            } else if (cap.kind === "tool") {
+                on = tools.includes(cap.tool);
+                text = on ? "已启用" : "未启用";
+            } else if (cap.kind === "chain") {
+                on = cap.tool.some((name) => tools.includes(name));
+                text = on ? "已启用" : "未启用";
+            }
+            status.textContent = text;
+            status.className = "cap-status " + (on ? "on" : "off");
+        });
+        $("capCount").textContent = CAPABILITIES.length + " 项能力 · " + tools.length + " 个工具";
     }
 
-    function setToolCapability(id, toolName, tools) {
-        const el = $(id);
-        const enabled = tools.includes(toolName);
-        el.textContent = enabled ? "已启用" : "未启用";
-        el.className = "cap-status " + (enabled ? "on" : "off");
+    function markCapabilitiesUnknown() {
+        CAPABILITIES.forEach((cap) => {
+            const card = $("capGrid").querySelector('[data-capability="' + cap.id + '"]');
+            if (!card) return;
+            const status = card.querySelector(".cap-status");
+            status.textContent = "未知";
+            status.className = "cap-status err";
+        });
+        $("capCount").textContent = "--";
     }
 
     function render(data) {
@@ -845,18 +1795,8 @@
         $("botIdText").textContent = data.botId || "--";
         $("userIdText").textContent = data.userId || "--";
         renderTools(data.tools);
+        updateCapabilities(data);
         $("updatedAt").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
-
-        const llmOn = !!data.llmConfigured;
-        const tools = Array.isArray(data.tools) ? data.tools : [];
-        setCapability("cap-llm", llmOn);
-        setCapability("cap-vision", llmOn);
-        setCapability("cap-image", llmOn);
-        setCapability("cap-voice", llmOn);
-        setToolCapability("cap-news", "get_hot_news", tools);
-        setToolCapability("cap-search", "web_search", tools);
-        $("capCount").textContent = document.querySelectorAll(".cap-card").length
-            + " 项能力 · " + tools.length + " 个工具";
 
         const qrBadge = $("qrBadge");
         qrBadge.className = "badge " + (loggedIn ? "ok" : (hasError ? "err" : "wait"));
@@ -868,8 +1808,7 @@
             const ids = ["机器人 ID", data.botId || "--", "用户 ID", data.userId || "--"].join("  ·  ");
             $("onlineIds").textContent = ids;
             ["step1", "step2", "step3"].forEach((id) => {
-                const step = $(id);
-                step.className = "step done";
+                $(id).className = "step done";
             });
         } else {
             const qr = $("qr");
@@ -898,7 +1837,17 @@
         $("connDot").className = "dot err";
         $("connText").textContent = "无法连接";
         $("llmText").textContent = "--";
+        $("botIdText").textContent = "--";
+        $("userIdText").textContent = "--";
         $("updatedAt").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+        const chips = $("toolChips");
+        chips.innerHTML = "";
+        const chip = document.createElement("span");
+        chip.className = "chip empty";
+        chip.textContent = "无法获取";
+        chips.appendChild(chip);
+        $("toolCount").textContent = "--";
+        markCapabilitiesUnknown();
         const errorBox = $("errorBox");
         errorBox.hidden = false;
         errorBox.textContent = "无法获取机器人状态，请确认服务已启动。";
@@ -951,8 +1900,306 @@
         }
     }
 
+    async function clearTodo() {
+        if (!confirm("确定清空机器人保存的全部待办吗？此操作不可恢复。")) {
+            return;
+        }
+        const button = $("clearTodoBtn");
+        const text = $("clearTodoText");
+        const originalText = text.textContent;
+        button.disabled = true;
+        text.textContent = "清空中…";
+        try {
+            const response = await fetch("/api/bot/todo/clear", { method: "POST" });
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            const data = await response.json();
+            alert("待办已清空，共删除 " + data.deleted + " 条记录。");
+        } catch (e) {
+            alert("清空失败：" + e.message);
+        } finally {
+            button.disabled = false;
+            text.textContent = originalText;
+        }
+    }
+
+    async function runSearch() {
+        const query = $("searchInput").value.trim();
+        const count = parseInt($("searchCount").value, 10) || 8;
+        const button = $("searchBtn");
+        const output = $("searchOutput");
+        const error = $("searchError");
+        if (!query) {
+            error.hidden = false;
+            error.textContent = "请输入要搜索的问题";
+            output.hidden = true;
+            return;
+        }
+        button.disabled = true;
+        button.querySelector("span").textContent = "搜索中";
+        output.hidden = false;
+        output.textContent = "正在搜索…";
+        error.hidden = true;
+        try {
+            const url = "/api/bot/search?q=" + encodeURIComponent(query) + "&maxResults=" + count;
+            const response = await fetch(url, { cache: "no-store" });
+            if (!response.ok) {
+                let detail = "HTTP " + response.status;
+                try {
+                    const payload = await response.json();
+                    if (payload && (payload.message || payload.error)) {
+                        detail = payload.message || payload.error;
+                    }
+                } catch (e) {
+                    // 忽略非 JSON 错误响应
+                }
+                throw new Error(detail);
+            }
+            const data = await response.json();
+            output.textContent = data.result || JSON.stringify(data, null, 2);
+        } catch (e) {
+            output.hidden = true;
+            error.hidden = false;
+            error.textContent = "搜索失败：" + e.message;
+        } finally {
+            button.disabled = false;
+            button.querySelector("span").textContent = "搜索";
+        }
+    }
+
+    function buildChainCard(chain) {
+        const spec = CHAIN_FORMS[chain.id] || {
+            title: chain.id,
+            icon: "route",
+            fields: [{ key: "json", label: "JSON 参数", type: "json" }]
+        };
+        const card = document.createElement("article");
+        card.className = "chain-card";
+
+        let formHtml = "";
+        spec.fields.forEach((field) => {
+            if (field.type === "json") {
+                formHtml +=
+                    '<div class="field-row">' +
+                    "<label>" + escapeHtml(field.label) + "</label>" +
+                    '<textarea class="input" data-key="json" spellcheck="false">{}</textarea>' +
+                    "</div>";
+            } else {
+                formHtml +=
+                    '<div class="field-row">' +
+                    "<label>" + escapeHtml(field.label) + "</label>" +
+                    '<input class="input" data-key="' + escapeHtml(field.key) + '" type="text" placeholder="' +
+                    escapeHtml(field.placeholder || "") + '">' +
+                    "</div>";
+            }
+        });
+
+        const steps = Array.isArray(chain.steps) ? chain.steps : [];
+        const stepHtml = steps.length
+            ? steps.map((name) => '<span class="step-chip">' + escapeHtml(TOOL_LABELS[name] || name) + "</span>").join("")
+            : '<span class="step-chip">--</span>';
+
+        card.innerHTML =
+            '<div class="chain-head">' +
+            '<div class="chain-title">' +
+            '<h3>' + escapeHtml(spec.title) + "</h3>" +
+            '<p class="chain-id">' + escapeHtml(chain.id) + "</p>" +
+            "</div>" +
+            '<span class="chain-state idle">未运行</span>' +
+            "</div>" +
+            '<p class="chain-desc">' + escapeHtml(chain.description || "") + "</p>" +
+            '<span class="steps-label">' + steps.length + " 步执行流程</span>" +
+            '<div class="step-chips">' + stepHtml + "</div>" +
+            '<div class="chain-form">' + formHtml + "</div>" +
+            '<div class="chain-actions">' +
+            '<input class="input chain-user" type="text" value="demo" aria-label="用户 ID">' +
+            '<button type="button" class="chain-run">' + iconSvg("play") + "<span>运行</span></button>" +
+            "</div>" +
+            '<pre class="chain-output" hidden></pre>';
+
+        const runBtn = card.querySelector(".chain-run");
+        runBtn.addEventListener("click", () => runChain(chain, card));
+        return card;
+    }
+
+    async function loadChains() {
+        if (chainLoading) return;
+        chainLoading = true;
+        const box = $("chainGrid");
+        const status = $("chainStatus");
+        status.textContent = "加载中";
+        status.className = "chain-state running";
+        try {
+            const response = await fetch("/api/bot/tool-chains", { cache: "no-store" });
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            const chains = await response.json();
+            box.innerHTML = "";
+            if (!Array.isArray(chains) || chains.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "chain-empty";
+                empty.textContent = "暂无已注册的工具链";
+                box.appendChild(empty);
+                status.textContent = "0 条";
+                status.className = "chain-state idle";
+                return;
+            }
+            chains.forEach((chain) => box.appendChild(buildChainCard(chain)));
+            status.textContent = chains.length + " 条";
+            status.className = "chain-state ok";
+        } catch (e) {
+            box.innerHTML = "";
+            const empty = document.createElement("div");
+            empty.className = "chain-empty";
+            empty.textContent = "工具链接口暂不可用：" + e.message;
+            box.appendChild(empty);
+            status.textContent = "不可用";
+            status.className = "chain-state err";
+        } finally {
+            chainLoading = false;
+        }
+    }
+
+    async function runChain(chain, card) {
+        const runBtn = card.querySelector(".chain-run");
+        const state = card.querySelector(".chain-state");
+        const output = card.querySelector(".chain-output");
+        const userId = card.querySelector(".chain-user").value.trim() || "demo";
+        const spec = CHAIN_FORMS[chain.id] || {};
+        const jsonField = card.querySelector('[data-key="json"]');
+        let body = {};
+
+        if (jsonField) {
+            try {
+                body = JSON.parse(jsonField.value.trim() || "{}");
+            } catch (e) {
+                state.textContent = "参数错误";
+                state.className = "chain-state err";
+                output.hidden = false;
+                output.textContent = "JSON 参数格式不正确：" + e.message;
+                return;
+            }
+        } else {
+            (spec.fields || []).forEach((field) => {
+                const el = card.querySelector('[data-key="' + field.key + '"]');
+                if (el) body[field.key] = el.value.trim();
+            });
+        }
+
+        runBtn.disabled = true;
+        runBtn.querySelector("span").textContent = "运行中";
+        state.textContent = "运行中";
+        state.className = "chain-state running";
+        output.hidden = false;
+        output.textContent = "正在执行…";
+        try {
+            const url = "/api/bot/tool-chains/" + encodeURIComponent(chain.id) +
+                "/run?userId=" + encodeURIComponent(userId);
+            const hasBody = jsonField ? true : Object.keys(body).length > 0;
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: hasBody ? JSON.stringify(body) : ""
+            });
+            if (!response.ok) {
+                let detail = "HTTP " + response.status;
+                try {
+                    const payload = await response.json();
+                    if (payload && (payload.message || payload.error)) {
+                        detail = payload.message || payload.error;
+                    }
+                } catch (e) {
+                    // 忽略非 JSON 错误响应
+                }
+                throw new Error(detail);
+            }
+            const data = await response.json();
+            state.textContent = "执行成功";
+            state.className = "chain-state ok";
+            output.textContent = data.result || JSON.stringify(data, null, 2);
+        } catch (e) {
+            state.textContent = "执行失败";
+            state.className = "chain-state err";
+            output.textContent = "执行失败：" + e.message;
+        } finally {
+            runBtn.disabled = false;
+            runBtn.querySelector("span").textContent = "运行";
+        }
+    }
+
+    function renderPrompts() {
+        const grid = $("promptGrid");
+        const count = $("promptCount");
+        count.textContent = PROMPTS.length + " 条";
+        PROMPTS.forEach((prompt) => {
+            const row = document.createElement("div");
+            row.className = "prompt-row";
+            const main = document.createElement("div");
+            main.className = "prompt-main";
+            const tag = document.createElement("span");
+            tag.className = "prompt-tag";
+            tag.textContent = prompt.tag;
+            const text = document.createElement("span");
+            text.className = "prompt-text";
+            text.textContent = prompt.text;
+            main.appendChild(tag);
+            main.appendChild(text);
+
+            const copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.className = "copy-btn";
+            copyBtn.innerHTML = iconSvg("copy") + "<span>复制</span>";
+            copyBtn.addEventListener("click", () => copyPrompt(prompt.text, copyBtn));
+            row.appendChild(main);
+            row.appendChild(copyBtn);
+            grid.appendChild(row);
+        });
+    }
+
+    function copyPrompt(text, button) {
+        const done = () => {
+            button.innerHTML = iconSvg("check") + "<span>已复制</span>";
+            setTimeout(() => {
+                button.innerHTML = iconSvg("copy") + "<span>复制</span>";
+            }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+        } else {
+            fallbackCopy(text, done);
+        }
+    }
+
+    function fallbackCopy(text, done) {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand("copy");
+            done();
+        } catch (e) {
+            // 复制失败时保持按钮原样
+        }
+        textarea.remove();
+    }
+
+    ensureCapabilityCards();
+    renderPrompts();
+    loadChains();
+
     $("qr").addEventListener("error", () => {
         $("qrHint").textContent = "二维码加载失败，请确认服务已启动";
+    });
+
+    $("searchInput").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            runSearch();
+        }
     });
 
     refresh();

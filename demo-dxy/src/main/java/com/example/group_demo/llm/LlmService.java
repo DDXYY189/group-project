@@ -10,6 +10,9 @@ import org.springframework.web.client.RestClient;
 import com.example.group_demo.config.RestClientFactory;
 import com.example.group_demo.tool.BotTool;
 import com.example.group_demo.tool.ToolRegistry;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -22,12 +25,14 @@ public class LlmService {
 
     private static final Logger log = LoggerFactory.getLogger(LlmService.class);
     private static final String SYSTEM_PROMPT =
-        "你是微信机器人助手，请用简洁的中文回答问题。工具返回的列表内容必须完整逐条展示给用户，不要只做概括。";
+        "你是微信机器人助手，请用简洁的中文回答问题。工具返回的列表内容必须完整逐条展示给用户，不要只做概括。"
+            + "当工具返回联网搜索结果时，必须以搜索结果为准，优先引用来源，不得因为与你的训练知识不一致而否定搜索结果。";
 
     private final LlmProperties properties;
     private final RestClient restClient;
     private final ConversationMemoryService conversationMemory;
     private final ToolRegistry toolRegistry;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public LlmService(LlmProperties properties, ConversationMemoryService conversationMemory) {
         this(properties, conversationMemory, new ToolRegistry(List.of()));
@@ -99,6 +104,9 @@ public class LlmService {
                 String callId = toolCall.id() == null ? "call_" + System.nanoTime() : toolCall.id();
                 String toolName = toolCall.function() == null ? null : toolCall.function().name();
                 String arguments = toolCall.function() == null ? "{}" : toolCall.function().arguments();
+                if ("web_search".equals(toolName)) {
+                    arguments = withOriginalSearchQuery(arguments, userText);
+                }
                 String result = toolRegistry.execute(userId, toolName, arguments);
                 lastToolResult = result;
                 BotTool tool = toolRegistry.find(toolName);
@@ -126,6 +134,20 @@ public class LlmService {
             return lastToolResult;
         }
         throw new IllegalStateException("LLM 工具调用超过最大轮数 " + maxRounds);
+    }
+
+    private String withOriginalSearchQuery(String argumentsJson, String userText) {
+        try {
+            JsonNode node = objectMapper.readTree(argumentsJson);
+            if (node != null && node.isObject()) {
+                ObjectNode arguments = (ObjectNode) node;
+                arguments.put("query", userText);
+                return objectMapper.writeValueAsString(arguments);
+            }
+        } catch (Exception e) {
+            log.warn("web_search 参数改写失败，沿用原参数：{}", e.getMessage());
+        }
+        return argumentsJson;
     }
 
     private List<Map<String, Object>> buildMemoryMessages(String userId, String userText) {
