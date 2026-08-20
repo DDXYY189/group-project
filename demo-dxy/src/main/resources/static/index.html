@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>微信机器人控制台</title>
+    <style>
+        :root {
+            --bg-top: #f7f9fb;
+            --bg-bottom: #e9eef4;
+            --card: #ffffff;
+            --ink: #101828;
+            --muted: #667085;
+            --line: #d7dde6;
+            --brand: #0f766e;
+            --brand-soft: #e6f4f2;
+            --ok: #16a34a;
+            --ok-soft: #ecfdf3;
+            --warn: #d97706;
+            --warn-soft: #fffbeb;
+            --danger: #dc2626;
+            --danger-soft: #fef2f2;
+            --shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            font-family: "Segoe UI", system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+            background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+            letter-spacing: 0;
+        }
+
+        .topbar {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 22px 20px 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: var(--brand);
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 20px;
+            line-height: 1.3;
+        }
+
+        .brand p {
+            margin: 2px 0 0;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .pill {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 34px;
+            padding: 0 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--card);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .pill.wait {
+            color: var(--warn);
+        }
+
+        .pill.ok {
+            color: var(--ok);
+        }
+
+        .pill.err {
+            color: var(--danger);
+        }
+
+        .pill-dot {
+            width: 8px;
+            height: 8px;
+            flex: 0 0 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .layout {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 18px 20px 40px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 28px;
+            align-items: start;
+        }
+
+        .section {
+            padding: 4px 0 20px;
+        }
+
+        .section + .section {
+            border-top: 1px solid var(--line);
+            padding-top: 22px;
+        }
+
+        .section-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .section-head h2 {
+            margin: 0;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        .section-meta {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .metric {
+            min-height: 86px;
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .metric-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .metric-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.4;
+            word-break: break-all;
+        }
+
+        .metric-value.mono {
+            font-family: Consolas, ui-monospace, monospace;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            flex: 0 0 9px;
+            border-radius: 50%;
+            background: var(--muted);
+        }
+
+        .dot.ok {
+            background: var(--ok);
+        }
+
+        .dot.wait {
+            background: var(--warn);
+        }
+
+        .dot.err {
+            background: var(--danger);
+        }
+
+        .tool-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .tool-label {
+            flex: 0 0 auto;
+            padding-top: 7px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            height: 30px;
+            padding: 0 12px;
+            border: 1px solid #b7dfd9;
+            border-radius: 999px;
+            background: var(--brand-soft);
+            color: #0b5d57;
+            font-size: 13px;
+        }
+
+        .chip.empty {
+            border-color: var(--line);
+            background: #f2f4f7;
+            color: var(--muted);
+        }
+
+        .cap-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .cap-card {
+            min-height: 132px;
+            padding: 16px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .cap-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .cap-icon {
+            width: 36px;
+            height: 36px;
+            flex: 0 0 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: var(--brand-soft);
+            color: var(--brand);
+        }
+
+        .cap-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .cap-status {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
+            padding: 0 9px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .cap-status.on {
+            background: var(--ok-soft);
+            color: var(--ok);
+        }
+
+        .cap-status.off {
+            background: var(--warn-soft);
+            color: var(--warn);
+        }
+
+        .cap-card h3 {
+            margin: 0 0 6px;
+            font-size: 15px;
+        }
+
+        .cap-card p {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--muted);
+        }
+
+        .qr-panel {
+            position: sticky;
+            top: 20px;
+            padding: 20px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .qr-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .qr-top h2 {
+            margin: 0;
+            font-size: 17px;
+        }
+
+        .badge {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--warn-soft);
+            color: var(--warn);
+        }
+
+        .badge.ok {
+            background: var(--ok-soft);
+            color: var(--ok);
+        }
+
+        .badge.err {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .qr-wrap {
+            width: min(100%, 300px);
+            aspect-ratio: 1 / 1;
+            margin: 16px auto 12px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        #qr {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+        }
+
+        .qr-hint {
+            margin: 0;
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .refresh-btn {
+            width: 100%;
+            height: 40px;
+            margin-top: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #f8fafc;
+            color: var(--ink);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .refresh-btn:hover {
+            background: #eef2f6;
+        }
+
+        .refresh-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .danger-btn {
+            border-color: #fecaca;
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .danger-btn:hover {
+            background: #fee2e2;
+        }
+
+        .danger-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .online-state {
+            padding: 10px 0 2px;
+            text-align: center;
+        }
+
+        .online-icon {
+            width: 64px;
+            height: 64px;
+            margin: 8px auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--ok-soft);
+            color: var(--ok);
+        }
+
+        .online-icon svg {
+            width: 34px;
+            height: 34px;
+        }
+
+        .online-state h3 {
+            margin: 0 0 14px;
+            font-size: 20px;
+        }
+
+        .online-id {
+            margin: 0 auto;
+            max-width: 280px;
+            padding: 9px 12px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: #f8fafc;
+            font-family: Consolas, ui-monospace, monospace;
+            font-size: 13px;
+            color: var(--muted);
+            word-break: break-all;
+        }
+
+        .steps {
+            display: grid;
+            gap: 10px;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .step i {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #eef2f6;
+            color: var(--muted);
+            font-style: normal;
+            font-size: 12px;
+        }
+
+        .step.active {
+            color: var(--ink);
+            font-weight: 600;
+        }
+
+        .step.active i {
+            background: var(--brand);
+            color: #fff;
+        }
+
+        .step.done {
+            color: var(--ok);
+        }
+
+        .step.done i {
+            background: var(--ok);
+            color: #fff;
+        }
+
+        .error-box {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            background: var(--danger-soft);
+            color: var(--danger);
+            font-size: 13px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .footer {
+            padding: 0 20px 28px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        @media (max-width: 960px) {
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 18px;
+            }
+
+            .qr-col {
+                order: -1;
+            }
+
+            .qr-panel {
+                position: static;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .metric-grid,
+            .cap-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .topbar {
+                align-items: flex-start;
+            }
+
+            .brand h1 {
+                font-size: 18px;
+            }
+
+            .tool-row {
+                display: block;
+            }
+
+            .tool-label {
+                display: block;
+                padding-top: 0;
+                margin-bottom: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="brand-mark">微</span>
+        <div>
+            <h1>微信机器人控制台</h1>
+            <p>WeChat iLink Bot</p>
+        </div>
+    </div>
+    <div class="pill wait" id="headerPill">
+        <span class="pill-dot"></span>
+        <span id="headerPillText">待登录</span>
+    </div>
+</header>
+
+<main class="layout">
+    <div class="col-main">
+        <section class="section" aria-label="运行状态">
+            <div class="section-head">
+                <h2>运行状态</h2>
+                <span class="section-meta" id="updatedAt">--:--:--</span>
+            </div>
+            <div class="metric-grid">
+                <div class="metric">
+                    <span class="metric-label">连接状态</span>
+                    <span class="metric-value">
+                        <span class="dot wait" id="connDot"></span>
+                        <span id="connText">检测中</span>
+                    </span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">LLM 配置</span>
+                    <span class="metric-value" id="llmText">检测中</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">机器人 ID</span>
+                    <span class="metric-value mono" id="botIdText">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">用户 ID</span>
+                    <span class="metric-value mono" id="userIdText">--</span>
+                </div>
+            </div>
+            <div class="tool-row">
+                <span class="tool-label">已启用工具</span>
+                <div class="chips" id="toolChips">
+                    <span class="chip empty">检测中</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" aria-label="机器人能力">
+            <div class="section-head">
+                <h2>机器人能力</h2>
+                <span class="section-meta" id="capCount">6 项能力</span>
+            </div>
+            <div class="cap-grid">
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-llm">未配置</span>
+                    </div>
+                    <h3>文本问答</h3>
+                    <p>自然语言对话、工具调用与多轮记忆</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <circle cx="9" cy="9" r="2"/>
+                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-vision">未配置</span>
+                    </div>
+                    <h3>图片理解</h3>
+                    <p>识别并理解图片内容</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/>
+                                <path d="m14 7 3 3"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-image">未配置</span>
+                    </div>
+                    <h3>图片生成</h3>
+                    <p>根据文字描述生成图片</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="2" width="6" height="12" rx="3"/>
+                                <path d="M5 10a7 7 0 0 0 14 0"/>
+                                <line x1="12" x2="12" y1="19" y2="22"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-voice">未配置</span>
+                    </div>
+                    <h3>语音消息</h3>
+                    <p>语音转写、识别与回复</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Z"/>
+                                <path d="M18 14h-8"/>
+                                <path d="M15 18h-5"/>
+                                <path d="M10 6h8v4h-8Z"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-news">未启用</span>
+                    </div>
+                    <h3>热点资讯</h3>
+                    <p>每日热点速览，60 秒读懂世界</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="m21 21-4.3-4.3"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-search">未启用</span>
+                    </div>
+                    <h3>联网搜索</h3>
+                    <p>实时信息搜索与网页摘要</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <aside class="qr-col">
+        <section class="qr-panel" aria-label="登录状态">
+            <div class="qr-top">
+                <h2>微信扫码登录</h2>
+                <span class="badge wait" id="qrBadge">等待扫码</span>
+            </div>
+
+            <div id="qrState">
+                <div class="qr-wrap">
+                    <img id="qr" src="/api/bot/qr.png" alt="微信登录二维码">
+                </div>
+                <p class="qr-hint" id="qrHint">打开微信扫一扫，扫描上方二维码</p>
+                <button type="button" class="refresh-btn" onclick="refreshOrRelogin()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                        <path d="M21 3v6h-6"/>
+                    </svg>
+                    <span id="refreshBtnText">刷新状态</span>
+                </button>
+            </div>
+
+            <div class="online-state" id="onlineState" hidden>
+                <div class="online-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                </div>
+                <h3>机器人已上线</h3>
+                <p class="online-id" id="onlineIds">--</p>
+            </div>
+
+            <button type="button" class="refresh-btn danger-btn" id="clearMemoryBtn" onclick="clearMemory()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                <span id="clearMemoryText">清除记忆</span>
+            </button>
+
+            <div class="steps">
+                <div class="step active" id="step1"><i>1</i><span>打开微信扫一扫</span></div>
+                <div class="step" id="step2"><i>2</i><span>扫描二维码并确认登录</span></div>
+                <div class="step" id="step3"><i>3</i><span>等待机器人上线</span></div>
+            </div>
+
+            <div class="error-box" id="errorBox" hidden></div>
+        </section>
+    </aside>
+</main>
+
+<footer class="footer">group-project · demo-dxy</footer>
+
+<script>
+    const TOOL_LABELS = {
+        query_weather: "天气查询",
+        manage_todo: "待办管理",
+        get_current_time: "当前时间",
+        web_search: "联网搜索",
+        get_hot_news: "热点资讯",
+        clear_memory: "清除记忆"
+    };
+
+    const $ = (id) => document.getElementById(id);
+    let loggedIn = false;
+
+    function connectionLabel(raw) {
+        const value = String(raw || "").toLowerCase();
+        if (value.includes("connected")) return "已连接";
+        if (value.includes("disconnect") || value.includes("offline") || value.includes("closed")) return "未连接";
+        if (value.includes("connect")) return "连接中";
+        return raw ? String(raw) : "未知";
+    }
+
+    function renderTools(tools) {
+        const box = $("toolChips");
+        box.innerHTML = "";
+        if (!Array.isArray(tools) || tools.length === 0) {
+            const chip = document.createElement("span");
+            chip.className = "chip empty";
+            chip.textContent = "暂无工具";
+            box.appendChild(chip);
+            return;
+        }
+        tools.forEach((name) => {
+            const chip = document.createElement("span");
+            chip.className = "chip";
+            chip.textContent = TOOL_LABELS[name] || name;
+            box.appendChild(chip);
+        });
+    }
+
+    function setCapability(id, enabled) {
+        const el = $(id);
+        el.textContent = enabled ? "已配置" : "未配置";
+        el.className = "cap-status " + (enabled ? "on" : "off");
+    }
+
+    function setToolCapability(id, toolName, tools) {
+        const el = $(id);
+        const enabled = tools.includes(toolName);
+        el.textContent = enabled ? "已启用" : "未启用";
+        el.className = "cap-status " + (enabled ? "on" : "off");
+    }
+
+    function render(data) {
+        loggedIn = !!data.loggedIn;
+        const hasError = !!data.loginError;
+        $("refreshBtnText").textContent = loggedIn ? "刷新状态" : "重新登录";
+
+        const pill = $("headerPill");
+        pill.className = "pill " + (loggedIn ? "ok" : (hasError ? "err" : "wait"));
+        $("headerPillText").textContent = loggedIn ? "运行中" : (hasError ? "登录异常" : "待登录");
+
+        const connDot = $("connDot");
+        connDot.className = "dot " + (loggedIn ? "ok" : (hasError ? "err" : "wait"));
+        $("connText").textContent = loggedIn ? "已连接" : connectionLabel(data.connectionStatus);
+
+        $("llmText").textContent = data.llmConfigured ? "已配置" : "未配置";
+        $("botIdText").textContent = data.botId || "--";
+        $("userIdText").textContent = data.userId || "--";
+        renderTools(data.tools);
+        $("updatedAt").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+
+        const llmOn = !!data.llmConfigured;
+        const tools = Array.isArray(data.tools) ? data.tools : [];
+        setCapability("cap-llm", llmOn);
+        setCapability("cap-vision", llmOn);
+        setCapability("cap-image", llmOn);
+        setCapability("cap-voice", llmOn);
+        setToolCapability("cap-news", "get_hot_news", tools);
+        setToolCapability("cap-search", "web_search", tools);
+        $("capCount").textContent = document.querySelectorAll(".cap-card").length
+            + " 项能力 · " + tools.length + " 个工具";
+
+        const qrBadge = $("qrBadge");
+        qrBadge.className = "badge " + (loggedIn ? "ok" : (hasError ? "err" : "wait"));
+        qrBadge.textContent = loggedIn ? "已登录" : (hasError ? "登录失败" : "等待扫码");
+
+        $("qrState").hidden = loggedIn;
+        $("onlineState").hidden = !loggedIn;
+        if (loggedIn) {
+            const ids = ["机器人 ID", data.botId || "--", "用户 ID", data.userId || "--"].join("  ·  ");
+            $("onlineIds").textContent = ids;
+            ["step1", "step2", "step3"].forEach((id) => {
+                const step = $(id);
+                step.className = "step done";
+            });
+        } else {
+            const qr = $("qr");
+            qr.src = "/api/bot/qr.png?t=" + Date.now();
+            ["step1", "step2", "step3"].forEach((id) => $(id).className = "step");
+            $("step1").className = "step active";
+            $("qrHint").textContent = hasError
+                ? "二维码不可用，请查看后端日志"
+                : "打开微信扫一扫，扫描上方二维码";
+        }
+
+        const errorBox = $("errorBox");
+        if (hasError) {
+            errorBox.hidden = false;
+            errorBox.textContent = "登录错误：" + data.loginError;
+        } else {
+            errorBox.hidden = true;
+        }
+    }
+
+    function renderUnreachable() {
+        $("refreshBtnText").textContent = "重新登录";
+        const pill = $("headerPill");
+        pill.className = "pill err";
+        $("headerPillText").textContent = "服务不可用";
+        $("connDot").className = "dot err";
+        $("connText").textContent = "无法连接";
+        $("llmText").textContent = "--";
+        $("updatedAt").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+        const errorBox = $("errorBox");
+        errorBox.hidden = false;
+        errorBox.textContent = "无法获取机器人状态，请确认服务已启动。";
+    }
+
+    async function refresh() {
+        try {
+            const response = await fetch("/api/bot/status", { cache: "no-store" });
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            render(await response.json());
+        } catch (e) {
+            renderUnreachable();
+        }
+    }
+
+    async function refreshOrRelogin() {
+        if (!loggedIn) {
+            try {
+                await fetch("/api/bot/relogin", { method: "POST" });
+            } catch (e) {
+                // 后端不可用时仍刷新一次以显示错误状态
+            }
+        }
+        refresh();
+    }
+
+    async function clearMemory() {
+        if (!confirm("确定清除机器人保存的全部对话记忆吗？此操作不可恢复。")) {
+            return;
+        }
+        const button = $("clearMemoryBtn");
+        const text = $("clearMemoryText");
+        const originalText = text.textContent;
+        button.disabled = true;
+        text.textContent = "清除中…";
+        try {
+            const response = await fetch("/api/bot/memory/clear", { method: "POST" });
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            const data = await response.json();
+            alert("记忆已清除，共删除 " + data.deleted + " 条记录。");
+        } catch (e) {
+            alert("清除失败：" + e.message);
+        } finally {
+            button.disabled = false;
+            text.textContent = originalText;
+        }
+    }
+
+    $("qr").addEventListener("error", () => {
+        $("qrHint").textContent = "二维码加载失败，请确认服务已启动";
+    });
+
+    refresh();
+    setInterval(refresh, 3000);
+</script>
+</body>
+</html>
