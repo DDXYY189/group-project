@@ -20,10 +20,6 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -35,11 +31,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Service
-public class BotService implements ApplicationRunner {
+public class BotService {
 
     private static final Logger log = LoggerFactory.getLogger(BotService.class);
 
+    private final String sessionId;
     private final ILinkClient client;
     private final LlmService llmService;
     private final VoiceService voiceService;
@@ -53,10 +49,11 @@ public class BotService implements ApplicationRunner {
     private volatile String loginError;
     private volatile LoginContext loginContext;
 
-    public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService,
-                      IntentService intentService, ImageService imageService,
+    public BotService(String sessionId, ILinkClient client, LlmService llmService,
+                      VoiceService voiceService, IntentService intentService, ImageService imageService,
                       ToolRegistry toolRegistry, ImageTextMerger imageTextMerger,
                       MessageDispatcher messageDispatcher) {
+        this.sessionId = sessionId;
         this.client = client;
         this.llmService = llmService;
         this.voiceService = voiceService;
@@ -67,32 +64,28 @@ public class BotService implements ApplicationRunner {
         this.messageDispatcher = messageDispatcher;
     }
 
-    @Override
-    public void run(ApplicationArguments args) {
-        startLogin();
-    }
-
     public void startLogin() {
         this.qrPng = null;
         this.loginError = null;
         try {
             String qrContent = client.executeLogin();
             this.qrPng = buildQrPng(qrContent);
-            log.info("二维码已就绪，访问 http://localhost:8080 扫码登录");
+            log.info("会话 {} 二维码已就绪，等待扫码", sessionId);
         } catch (Exception e) {
             this.loginError = e.getMessage();
-            log.error("获取登录二维码失败", e);
+            log.error("会话 {} 获取登录二维码失败", sessionId, e);
         }
     }
 
     public void onLoginSuccess(LoginContext context) {
         this.loginContext = context;
-        log.info("登录成功 botId={} userId={}", context.getBotId(), context.getUserId());
+        log.info("会话 {} 登录成功 botId={} userId={}",
+            sessionId, context.getBotId(), context.getUserId());
     }
 
     public void onLoginFailure(Throwable throwable) {
-        this.loginError = throwable.getMessage();
-        log.error("登录失败: {}", throwable.getMessage());
+        this.loginError = throwable == null ? null : throwable.getMessage();
+        log.error("会话 {} 登录失败: {}", sessionId, String.valueOf(throwable));
     }
 
     public void onMessages(List<WeixinMessage> messages) {
@@ -433,6 +426,14 @@ public class BotService implements ApplicationRunner {
 
     public byte[] getQrPng() {
         return qrPng;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public ILinkClient getClient() {
+        return client;
     }
 
     public boolean isLoggedIn() {

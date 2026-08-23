@@ -1531,7 +1531,7 @@
 
             <div id="qrState">
                 <div class="qr-wrap">
-                    <img id="qr" src="/api/bot/qr.png" alt="微信登录二维码">
+                    <img id="qr" src="" alt="微信登录二维码">
                 </div>
                 <p class="qr-hint" id="qrHint">打开微信扫一扫，扫描上方二维码</p>
                 <button type="button" class="refresh-btn" onclick="refreshOrRelogin()">
@@ -1540,6 +1540,13 @@
                         <path d="M21 3v6h-6"/>
                     </svg>
                     <span id="refreshBtnText">刷新状态</span>
+                </button>
+                <button type="button" class="refresh-btn" onclick="newSession()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5v14"/>
+                        <path d="M5 12h14"/>
+                    </svg>
+                    <span>新建会话</span>
                 </button>
             </div>
 
@@ -1582,7 +1589,7 @@
     </aside>
 </main>
 
-<footer class="footer">group-project · demo-dxy</footer>
+<footer class="footer" id="footer">group-project · demo-dxy</footer>
 
 <script>
     const TOOL_LABELS = {
@@ -1676,6 +1683,7 @@
 
     const $ = (id) => document.getElementById(id);
     let loggedIn = false;
+    let sessionId = localStorage.getItem("ilinkSessionId") || "";
     let chainLoading = false;
 
     function escapeHtml(value) {
@@ -1812,13 +1820,15 @@
             });
         } else {
             const qr = $("qr");
-            qr.src = "/api/bot/qr.png?t=" + Date.now();
+            qr.src = "/api/bot/session/" + sessionId + "/qr.png?t=" + Date.now();
             ["step1", "step2", "step3"].forEach((id) => $(id).className = "step");
             $("step1").className = "step active";
             $("qrHint").textContent = hasError
                 ? "二维码不可用，请查看后端日志"
                 : "打开微信扫一扫，扫描上方二维码";
         }
+
+        $("footer").textContent = "group-project · demo-dxy · 会话 " + sessionId.slice(0, 8);
 
         const errorBox = $("errorBox");
         if (hasError) {
@@ -1853,9 +1863,23 @@
         errorBox.textContent = "无法获取机器人状态，请确认服务已启动。";
     }
 
+    async function ensureSession() {
+        if (sessionId) {
+            return;
+        }
+        const response = await fetch("/api/bot/session", { method: "POST" });
+        if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+        }
+        const data = await response.json();
+        sessionId = data.sessionId;
+        localStorage.setItem("ilinkSessionId", sessionId);
+    }
+
     async function refresh() {
         try {
-            const response = await fetch("/api/bot/status", { cache: "no-store" });
+            await ensureSession();
+            const response = await fetch("/api/bot/session/" + sessionId + "/status", { cache: "no-store" });
             if (!response.ok) {
                 throw new Error("HTTP " + response.status);
             }
@@ -1866,9 +1890,10 @@
     }
 
     async function refreshOrRelogin() {
+        await ensureSession();
         if (!loggedIn) {
             try {
-                await fetch("/api/bot/relogin", { method: "POST" });
+                await fetch("/api/bot/session/" + sessionId + "/relogin", { method: "POST" });
             } catch (e) {
                 // 后端不可用时仍刷新一次以显示错误状态
             }
@@ -1876,17 +1901,36 @@
         refresh();
     }
 
+    async function newSession() {
+        if (!confirm("新建会话会分配一个新的机器人客户端，当前页面将切换到新会话。")) {
+            return;
+        }
+        try {
+            const response = await fetch("/api/bot/session", { method: "POST" });
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            const data = await response.json();
+            sessionId = data.sessionId;
+            localStorage.setItem("ilinkSessionId", sessionId);
+            refresh();
+        } catch (e) {
+            alert("新建会话失败：" + e.message);
+        }
+    }
+
     async function clearMemory() {
         if (!confirm("确定清除机器人保存的全部对话记忆吗？此操作不可恢复。")) {
             return;
         }
+        await ensureSession();
         const button = $("clearMemoryBtn");
         const text = $("clearMemoryText");
         const originalText = text.textContent;
         button.disabled = true;
         text.textContent = "清除中…";
         try {
-            const response = await fetch("/api/bot/memory/clear", { method: "POST" });
+            const response = await fetch("/api/bot/session/" + sessionId + "/memory/clear", { method: "POST" });
             if (!response.ok) {
                 throw new Error("HTTP " + response.status);
             }
@@ -1904,13 +1948,14 @@
         if (!confirm("确定清空机器人保存的全部待办吗？此操作不可恢复。")) {
             return;
         }
+        await ensureSession();
         const button = $("clearTodoBtn");
         const text = $("clearTodoText");
         const originalText = text.textContent;
         button.disabled = true;
         text.textContent = "清空中…";
         try {
-            const response = await fetch("/api/bot/todo/clear", { method: "POST" });
+            const response = await fetch("/api/bot/session/" + sessionId + "/todo/clear", { method: "POST" });
             if (!response.ok) {
                 throw new Error("HTTP " + response.status);
             }
@@ -2202,7 +2247,7 @@
         }
     });
 
-    refresh();
+    ensureSession().then(refresh);
     setInterval(refresh, 3000);
 </script>
 </body>

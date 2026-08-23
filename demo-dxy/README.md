@@ -10,9 +10,19 @@ mvn spring-boot:run
 
 启动后：
 
-- `GET http://localhost:8080/api/bot/qr.png`：获取登录二维码
-- `GET http://localhost:8080/api/bot/status`：查看登录状态
+- 前端会自动创建会话并扫码；手动接口：
+  - `POST /api/bot/session`：创建会话，返回 `sessionId`
+  - `GET /api/bot/session/{id}/qr.png`：获取该会话的登录二维码
+  - `GET /api/bot/session/{id}/status`：查看该会话登录状态
+  - `POST /api/bot/session/{id}/relogin`：重新登录
+  - `DELETE /api/bot/session/{id}`：关闭并删除会话
+  - `GET /api/bot/sessions`：查看全部会话
 - 扫码登录后，给机器人发文本，会收到 `收到：<原文>` 的回复
+
+## 多用户会话
+
+每个 `sessionId` 对应一个独立的 `ILinkClient`，支持多个用户同时扫码，登录过程由共享线程池异步执行，互不阻塞。
+登录成功后通过 `exportResumeContext()` 将登录信息存入 H2（`bot_session` 表），服务重启后自动恢复，无需重新扫码；token 失效时在页面点“重新登录”即可。
 
 ## 技术栈
 
