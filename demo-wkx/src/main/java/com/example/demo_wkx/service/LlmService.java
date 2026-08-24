@@ -102,6 +102,9 @@ public class LlmService {
         CITY_CODES.put("无锡", "101190301");
     }
 
+    /**
+     * 检测是否为天气相关查询
+     */
     private boolean isWeatherQuery(String message) {
         String[] keywords = {"天气", "气温", "几度", "下雨", "下雪", "冷不冷", "热不", "穿什么",
                 "带伞", "防晒", "湿度", "风力", "雾霾", "晴", "阴天", "暴雨"};
@@ -111,6 +114,9 @@ public class LlmService {
         return false;
     }
 
+    /**
+     * 从用户消息中提取城市名
+     */
     private String extractCity(String message) {
         for (String city : CITIES) {
             if (message.contains(city)) return city;
@@ -123,6 +129,9 @@ public class LlmService {
         return "北京";
     }
 
+    /**
+     * 英文天气描述转中文
+     */
     private String translateWeather(String desc) {
         if (desc == null || desc.isEmpty()) return "未知";
         String d = desc.toLowerCase();
@@ -141,6 +150,11 @@ public class LlmService {
         return desc;
     }
 
+    /**
+     * 获取实时天气 (心知天气API)
+     * 免费用户返回: 天气现象文字、代码、气温
+     * 付费用户返回: 体感温度、气压、湿度、能见度、风向、风速等
+     */
     public String getWeather(String city) {
         if (weatherApiKey == null || weatherApiKey.isEmpty() || weatherApiKey.equals("YOUR_SENIVERSE_API_KEY_HERE")) {
             System.err.println("❌ 心知天气API Key未配置，请在application.properties中设置weather.api-key");
@@ -238,6 +252,9 @@ public class LlmService {
         }
     }
 
+    /**
+     * Open-Meteo备用天气服务
+     */
     private String getWeatherFromOpenMeteo(String city) {
         try {
             double[] coords = geocodeCity(city);
@@ -314,6 +331,9 @@ public class LlmService {
         CITY_COORDS.put("无锡", new double[]{31.56667, 120.28333});
     }
 
+    /**
+     * 城市名转经纬度 (优先映射表，其次Open-Meteo地理编码API)
+     */
     private double[] geocodeCity(String city) {
         double[] coords = CITY_COORDS.get(city);
         if (coords != null) {
@@ -345,6 +365,9 @@ public class LlmService {
         return null;
     }
 
+    /**
+     * WMO天气代码转中文描述
+     */
     private String wmoToChinese(int code) {
         switch (code) {
             case 0: return "晴天";
@@ -373,6 +396,9 @@ public class LlmService {
         }
     }
 
+    /**
+     * 搜索城市代码 (优先映射表，其次中国天气网搜索接口)
+     */
     private String searchCityCode(String cityName) {
         String code = CITY_CODES.get(cityName);
         if (code != null) {
@@ -405,6 +431,9 @@ public class LlmService {
         return null;
     }
 
+    /**
+     * 通过城市代码获取天气 (t.weather.itboy.net)
+     */
     private String getWeatherByCode(String city, String cityCode) {
         try {
             String url = "http://t.weather.itboy.net/api/weather/city/" + cityCode;
@@ -439,6 +468,9 @@ public class LlmService {
         return null;
     }
 
+    /**
+     * wttr.in备用天气服务
+     */
     private String getWeatherFromWttr(String city) {
         try {
             String url = "https://wttr.in/" + URLEncoder.encode(city, StandardCharsets.UTF_8) + "?format=j1&lang=zh";
@@ -469,9 +501,14 @@ public class LlmService {
         }
     }
 
+    /**
+     * 构建工具定义列表 (OpenAI Function Calling 格式)
+     * 每个工具用 JSON Schema 描述函数签名
+     */
     private ArrayNode getToolDefinitions() {
         ArrayNode tools = objectMapper.createArrayNode();
 
+        // 工具1: get_weather — 查询实时天气
         ObjectNode weatherTool = objectMapper.createObjectNode();
         weatherTool.put("type", "function");
         ObjectNode weatherFunc = objectMapper.createObjectNode();
@@ -492,6 +529,7 @@ public class LlmService {
         weatherTool.set("function", weatherFunc);
         tools.add(weatherTool);
 
+        // 工具2: get_current_time — 获取当前时间（含农历）
         ObjectNode timeTool = objectMapper.createObjectNode();
         timeTool.put("type", "function");
         ObjectNode timeFunc = objectMapper.createObjectNode();
@@ -508,6 +546,10 @@ public class LlmService {
         return tools;
     }
 
+    /**
+     * 执行工具调用，返回结果字符串
+     * LLM 输出 tool_calls 后，此方法在本地执行对应函数
+     */
     private String executeTool(String toolName, String arguments) {
         try {
             JsonNode args = objectMapper.readTree(arguments);
@@ -547,16 +589,38 @@ public class LlmService {
         }
     }
 
+    /**
+     * 使用 LLM 生成文本回复 (OpenAI兼容接口，支持DeepSeek等)
+     */
     public String chat(String userId, String userMessage) {
-        return chat(userId, userMessage, false);
+        return chat(userId, userMessage, false, null);
     }
 
+    /**
+     * 使用 LLM 生成文本回复，支持 Function Calling 和意图识别
+     */
     public String chat(String userId, String userMessage, boolean fromVoice) {
+        return chat(userId, userMessage, fromVoice, null);
+    }
+
+    /**
+     * 使用 LLM 生成文本回复，支持 Function Calling、意图识别和 RAG 增强
+     *
+     * 工作流程:
+     * 1. 将用户消息 + RAG检索上下文 + 工具定义发送给 LLM
+     * 2. LLM 决定是否调用工具（返回 tool_calls）
+     * 3. 若调用工具，本地执行并将结果回传 LLM
+     * 4. LLM 基于工具结果 + RAG上下文 生成最终回复（带意图标签）
+     *
+     * @param ragContext RAG 检索到的知识库上下文，为 null 则不注入
+     */
+    public String chat(String userId, String userMessage, boolean fromVoice, String ragContext) {
         try {
             List<Object[]> history = conversationHistory.computeIfAbsent(userId, k -> new ArrayList<>());
 
             ArrayNode messages = objectMapper.createArrayNode();
 
+            // === 构建系统提示词 ===
             ObjectNode systemMsg = objectMapper.createObjectNode();
             systemMsg.put("role", "system");
             String currentTime = java.time.LocalDateTime.now().format(
@@ -579,10 +643,12 @@ public class LlmService {
                 "用户:\"画一只猫\" → [IMAGE:一只可爱的橘猫在阳光下打盹，毛茸茸的]\n" +
                 "用户:(语音)\"今天天气怎么样\" → [VOICE]今天北京天气晴朗，气温25度...";
             String voiceHint = fromVoice ? "\n（注意：用户本次发送的是语音消息，建议用[VOICE]标签回复）" : "";
+            String ragText = (ragContext != null && !ragContext.isBlank()) ? ragContext : "";
             systemMsg.put("content", systemPrompt + "\n当前北京时间是：" + currentTime + "，农历" + lunarDate +
-                "。当用户询问当前时间或日期时，请同时告诉用户公历和农历日期。" + constellationKnowledge + intentPrompt + voiceHint);
+                "。当用户询问当前时间或日期时，请同时告诉用户公历和农历日期。" + constellationKnowledge + ragText + intentPrompt + voiceHint);
             messages.add(systemMsg);
 
+            // === 添加对话历史 ===
             int startIdx = Math.max(0, history.size() - 10);
             for (int i = startIdx; i < history.size(); i++) {
                 Object[] pair = history.get(i);
@@ -597,11 +663,13 @@ public class LlmService {
                 messages.add(assistantMsg);
             }
 
+            // === 当前用户消息 ===
             ObjectNode currentMsg = objectMapper.createObjectNode();
             currentMsg.put("role", "user");
             currentMsg.put("content", userMessage);
             messages.add(currentMsg);
 
+            // === 构建请求（含工具定义）===
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
             requestBody.set("messages", messages);
@@ -611,6 +679,7 @@ public class LlmService {
             requestBody.set("tools", getToolDefinitions());
             requestBody.put("tool_choice", "auto");
 
+            // === 发送第一次请求 ===
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/chat/completions"))
                     .header("Content-Type", "application/json")
@@ -629,9 +698,11 @@ public class LlmService {
             JsonNode message = root.path("choices").path(0).path("message");
             JsonNode toolCalls = message.path("tool_calls");
 
+            // === 处理工具调用 ===
             if (toolCalls.isArray() && !toolCalls.isEmpty()) {
                 System.out.println("🔧 LLM 请求调用 " + toolCalls.size() + " 个工具");
 
+                // 将 assistant 的 tool_calls 消息加入对话
                 ObjectNode assistantToolMsg = objectMapper.createObjectNode();
                 assistantToolMsg.put("role", "assistant");
                 if (!message.path("content").isNull() && !message.path("content").asText("").isEmpty()) {
@@ -642,6 +713,7 @@ public class LlmService {
                 assistantToolMsg.set("tool_calls", toolCalls);
                 messages.add(assistantToolMsg);
 
+                // 执行每个工具调用
                 for (JsonNode toolCall : toolCalls) {
                     String toolCallId = toolCall.path("id").asText();
                     String toolName = toolCall.path("function").path("name").asText();
@@ -651,6 +723,7 @@ public class LlmService {
                     String toolResult = executeTool(toolName, arguments);
                     System.out.println("🔧 工具结果: " + toolResult);
 
+                    // 将工具结果加入对话
                     ObjectNode toolResultMsg = objectMapper.createObjectNode();
                     toolResultMsg.put("role", "tool");
                     toolResultMsg.put("tool_call_id", toolCallId);
@@ -658,6 +731,7 @@ public class LlmService {
                     messages.add(toolResultMsg);
                 }
 
+                // === 发送第二次请求，让 LLM 基于工具结果生成最终回复 ===
                 ObjectNode secondRequest = objectMapper.createObjectNode();
                 secondRequest.put("model", model);
                 secondRequest.set("messages", messages);
@@ -693,6 +767,7 @@ public class LlmService {
 
                 return reply;
             } else {
+                // === 无工具调用，直接回复 ===
                 String reply = message.path("content").asText();
 
                 String cleanReply = stripIntentTag(reply);
@@ -708,6 +783,9 @@ public class LlmService {
         }
     }
 
+    /**
+     * 去除意图标签，返回干净文本（用于存入对话历史）
+     */
     private String stripIntentTag(String reply) {
         if (reply == null) return "";
         if (reply.startsWith("[TEXT]")) {
@@ -723,6 +801,9 @@ public class LlmService {
         return reply;
     }
 
+    /**
+     * 使用 Pollinations.ai 免费生成图片 (无需API Key)
+     */
     public byte[] generateImage(String prompt) {
         try {
             String encodedPrompt = URLEncoder.encode(prompt, StandardCharsets.UTF_8);
@@ -746,6 +827,10 @@ public class LlmService {
         }
     }
 
+    /**
+     * 分析图片内容 (通过SDK下载的图片字节)
+     * 优先使用独立配置的视觉API，否则回退到主API
+     */
     public String describeImage(byte[] imageBytes) {
         try {
             if (imageBytes == null || imageBytes.length == 0) {
@@ -755,12 +840,14 @@ public class LlmService {
             String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
             System.out.println("✅ 图片数据获取成功，大小: " + imageBytes.length + " bytes");
 
+            // 选择API: 优先使用独立配置的视觉API，否则回退到主API
             String useBaseUrl = (visionBaseUrl != null && !visionBaseUrl.isEmpty()) ? visionBaseUrl : baseUrl;
             String useApiKey = (visionApiKey != null && !visionApiKey.isEmpty()) ? visionApiKey : apiKey;
             String useModel = (visionModel != null && !visionModel.isEmpty()) ? visionModel : model;
 
             boolean visionConfigured = (visionBaseUrl != null && !visionBaseUrl.isEmpty());
 
+            // 构建OpenAI视觉格式请求
             ArrayNode messages = objectMapper.createArrayNode();
             ObjectNode userMsg = objectMapper.createObjectNode();
             userMsg.put("role", "user");
@@ -820,6 +907,9 @@ public class LlmService {
         }
     }
 
+    /**
+     * 语音转文字 (DashScope paraformer ASR)
+     */
     public String transcribeAudio(byte[] audioData, String format) {
         try {
             if (audioData == null || audioData.length == 0) {
@@ -866,6 +956,9 @@ public class LlmService {
         }
     }
 
+    /**
+     * 文本转语音 (DashScope cosyvoice TTS, 原生HTTP API)
+     */
     public byte[] textToSpeech(String text) {
         try {
             if (text == null || text.isEmpty()) return null;
@@ -918,6 +1011,9 @@ public class LlmService {
         }
     }
 
+    /**
+     * 清除用户对话历史
+     */
     public void clearHistory(String userId) {
         conversationHistory.remove(userId);
     }
