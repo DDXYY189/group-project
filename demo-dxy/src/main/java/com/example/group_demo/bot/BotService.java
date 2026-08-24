@@ -5,6 +5,8 @@ import com.example.group_demo.image.ImageService;
 import com.example.group_demo.intent.Intent;
 import com.example.group_demo.intent.ImageTextMerger;
 import com.example.group_demo.intent.IntentService;
+import com.example.group_demo.rag.RagService;
+import com.example.group_demo.skill.SkillRegistry;
 import com.example.group_demo.tool.ToolRegistry;
 import com.example.group_demo.voice.VoiceService;
 import com.github.wechat.ilink.sdk.ILinkClient;
@@ -48,6 +50,8 @@ public class BotService implements ApplicationRunner {
     private final ToolRegistry toolRegistry;
     private final ImageTextMerger imageTextMerger;
     private final MessageDispatcher messageDispatcher;
+    private final SkillRegistry skillRegistry;
+    private final RagService ragService;
 
     private volatile byte[] qrPng;
     private volatile String loginError;
@@ -56,7 +60,8 @@ public class BotService implements ApplicationRunner {
     public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService,
                       IntentService intentService, ImageService imageService,
                       ToolRegistry toolRegistry, ImageTextMerger imageTextMerger,
-                      MessageDispatcher messageDispatcher) {
+                      MessageDispatcher messageDispatcher,
+                      SkillRegistry skillRegistry, RagService ragService) {
         this.client = client;
         this.llmService = llmService;
         this.voiceService = voiceService;
@@ -65,6 +70,8 @@ public class BotService implements ApplicationRunner {
         this.toolRegistry = toolRegistry;
         this.imageTextMerger = imageTextMerger;
         this.messageDispatcher = messageDispatcher;
+        this.skillRegistry = skillRegistry;
+        this.ragService = ragService;
     }
 
     @Override
@@ -184,7 +191,7 @@ public class BotService implements ApplicationRunner {
         }
         Intent intent = intentService.classify(userText);
         if (intent == null || intent.action() == null) {
-            safeSendText(fromUserId, replyToText(fromUserId, userText));
+            routeMessage(fromUserId, userText);
             return;
         }
         switch (intent.action()) {
@@ -193,9 +200,27 @@ public class BotService implements ApplicationRunner {
             case "image" -> sendImageReply(fromUserId,
                 intent.imagePrompt() != null ? intent.imagePrompt() : userText,
                 intent.reply() != null ? intent.reply() : "图片生成完成");
-            // 文本回复必须走带记忆的 chat，否则模型看不到历史上下文
-            default -> safeSendText(fromUserId, replyToText(fromUserId, userText));
+            default -> routeMessage(fromUserId, userText);
         }
+    }
+
+    private void routeMessage(String fromUserId, String userText) {
+        Optional<com.example.group_demo.skill.BotSkill> matched = skillRegistry.match(userText);
+        if (matched.isPresent()) {
+            String reply = matched.get().execute(fromUserId, userText);
+            log.info("Skill 命中 userId={} skill={}", fromUserId, matched.get().name());
+            safeSendText(fromUserId, reply);
+            return;
+        }
+        if (ragService.shouldRetrieve(userText)) {
+            String augmentedPrompt = ragService.augmentPrompt(
+                "你是微信机器人助手，请用简洁的中文回答问题。", userText);
+            String reply = llmService.chat(fromUserId, userText, augmentedPrompt);
+            log.info("RAG 增强回复 userId={}", fromUserId);
+            safeSendText(fromUserId, reply);
+            return;
+        }
+        safeSendText(fromUserId, replyToText(fromUserId, userText));
     }
 
     private String cleanInstruction(String userText) {

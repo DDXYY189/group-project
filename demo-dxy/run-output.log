@@ -53,3 +53,4 @@
 2026-08-20T18:09:20.793+08:00  INFO 25708 --- [group-demo] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
 2026-08-20T18:09:20.794+08:00  INFO 25708 --- [group-demo] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
 2026-08-20T18:09:21.014+08:00  INFO 25708 --- [group-demo] [           main] com.example.group_demo.bot.BotService    : 二维码已就绪，访问 http://localhost:8080 扫码登录
+2026-08-20T18:11:21.242+08:00 ERROR 25708 --- [group-demo] [       ilink-io] com.example.group_demo.bot.BotService    : 登录失败: com.github.wechat.ilink.sdk.core.exception.ConnectFailedException: qrcode expired

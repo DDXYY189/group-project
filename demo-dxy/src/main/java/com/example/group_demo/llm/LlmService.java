@@ -57,7 +57,11 @@ public class LlmService {
     }
 
     public String chat(String userId, String userText) {
-        List<Map<String, Object>> messages = buildMemoryMessages(userId, userText);
+        return chat(userId, userText, SYSTEM_PROMPT);
+    }
+
+    public String chat(String userId, String userText, String systemPrompt) {
+        List<Map<String, Object>> messages = buildMemoryMessages(userId, userText, systemPrompt);
         String reply = complete(properties.getModel(), messages);
         conversationMemory.append(userId, "user", userText);
         conversationMemory.append(userId, "assistant", reply);
@@ -129,9 +133,13 @@ public class LlmService {
     }
 
     private List<Map<String, Object>> buildMemoryMessages(String userId, String userText) {
+        return buildMemoryMessages(userId, userText, SYSTEM_PROMPT);
+    }
+
+    private List<Map<String, Object>> buildMemoryMessages(String userId, String userText, String systemPrompt) {
         ConversationMemoryService.ChatContext context = prepareMemoryContext(userId);
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+        messages.add(Map.of("role", "system", "content", systemPrompt));
         if (context.summary() != null && !context.summary().isBlank()) {
             messages.add(Map.of(
                 "role", "system",

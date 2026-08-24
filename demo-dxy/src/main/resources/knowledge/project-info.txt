@@ -1,0 +1,9 @@
+# 项目架构
+keywords: 项目,架构,技术栈,Spring Boot,Java,框架,用的什么
+本项目是基于 Spring Boot 4.1.0 + Java 21+ 开发的微信机器人系统。
+技术栈包括：
+1. 微信 SDK：wechat-ilink-sdk 2.3.3，用于微信消息收发
+2. 大模型：通义千问 DashScope（qwen-plus 文本对话、wanx 图片生成、cosyvoice 语音合成、qwen-vl-plus 图片理解）
+3. 数据库：H2 文件数据库，持久化对话记忆
+4. 构建：Maven 3.9.16，JDK 26 编译
+项目模块：demo-dxy（主模块）、demo-xzm、demo-qhx 等，采用多模块协作开发。
