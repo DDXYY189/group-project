@@ -1,5 +1,7 @@
 package com.example.demo_wkx;
 
+import com.example.demo_wkx.rag.RagService;
+import com.example.demo_wkx.skill.SkillService;
 import com.example.demo_wkx.service.LlmService;
 import com.github.wechat.ilink.sdk.ILinkClient;
 import com.github.wechat.ilink.sdk.core.config.ILinkConfig;
@@ -28,6 +30,12 @@ public class DemoWkxApplication implements CommandLineRunner {
 
 	@Autowired
 	private LlmService llmService;
+
+	@Autowired
+	private SkillService skillService;
+
+	@Autowired
+	private RagService ragService;
 
 	private ILinkClient client;
 
@@ -83,7 +91,7 @@ public class DemoWkxApplication implements CommandLineRunner {
 	private void handleMessage(WeixinMessage msg) {
 		try {
 			String fromUserId = msg.getFrom_user_id();
-		if (msg.getItem_list() == null) return;
+			if (msg.getItem_list() == null) return;
 
 			for (MessageItem item : msg.getItem_list()) {
 				if (item.getText_item() != null) {
@@ -107,8 +115,17 @@ public class DemoWkxApplication implements CommandLineRunner {
 						client.sendText(fromUserId, "✅ 对话已清空，可以开始新的对话。");
 					} else if (trimmed.equals("帮助") || trimmed.equalsIgnoreCase("help")) {
 						sendHelp(fromUserId);
+					} else if (trimmed.equals("rag开关") || trimmed.equals("rag toggle")) {
+						boolean newState = !ragService.isEnabled();
+						ragService.setEnabled(newState);
+						client.sendText(fromUserId, "📚 RAG 已" + (newState ? "开启" : "关闭") +
+							"，知识库共 " + ragService.getDocumentCount() + " 篇文档。");
+					} else if (trimmed.equals("rag状态") || trimmed.equals("rag status")) {
+						client.sendText(fromUserId, "📚 RAG 状态：" + (ragService.isEnabled() ? "✅ 开启" : "❌ 关闭") +
+							"\n知识库文档数：" + ragService.getDocumentCount() + "\n" +
+							"消息路由流程：Skill → RAG → LLM");
 					} else {
-						String reply = llmService.chat(fromUserId, text, false);
+						String reply = routeMessage(fromUserId, text, false);
 						System.out.println("🤖 回复 [" + fromUserId + "]: " + reply);
 						routeReply(fromUserId, reply, false);
 					}
@@ -132,47 +149,67 @@ public class DemoWkxApplication implements CommandLineRunner {
 						} catch (Exception ignored) {}
 					}
 				} else if (item.getVoice_item() != null) {
-						System.out.println("🔊 收到语音消息 [" + fromUserId + "]");
-						try {
-							String voiceText = item.getVoice_item().getText();
-							System.out.println("📝 SDK文字: " + (voiceText != null ? voiceText : "(空)"));
+					System.out.println("🔊 收到语音消息 [" + fromUserId + "]");
+					try {
+						String voiceText = item.getVoice_item().getText();
+						System.out.println("📝 SDK文字: " + (voiceText != null ? voiceText : "(空)"));
 
-							if (voiceText == null || voiceText.isEmpty()) {
-								byte[] voiceBytes = client.downloadVoiceFromMessageItem(item);
-								System.out.println("📥 语音下载完成，大小: " + (voiceBytes != null ? voiceBytes.length : 0) + " bytes");
+						if (voiceText == null || voiceText.isEmpty()) {
+							byte[] voiceBytes = client.downloadVoiceFromMessageItem(item);
+							System.out.println("📥 语音下载完成，大小: " + (voiceBytes != null ? voiceBytes.length : 0) + " bytes");
 
-								Integer encodeType = item.getVoice_item().getEncode_type();
-								String format = (encodeType != null && encodeType == 4) ? "mp3" : "amr";
-								System.out.println("🎵 语音格式: " + format + ", encode_type: " + encodeType);
+							Integer encodeType = item.getVoice_item().getEncode_type();
+							String format = (encodeType != null && encodeType == 4) ? "mp3" : "amr";
+							System.out.println("🎵 语音格式: " + format + ", encode_type: " + encodeType);
 
-								voiceText = llmService.transcribeAudio(voiceBytes, format);
-								System.out.println("📝 ASR识别结果: " + (voiceText != null ? voiceText : "(失败)"));
-							}
-
-							if (voiceText != null && !voiceText.isEmpty()) {
-								System.out.println("💬 语音内容: " + voiceText);
-								String reply = llmService.chat(fromUserId, voiceText, true);
-								System.out.println("🤖 回复 [" + fromUserId + "]: " + reply);
-								routeReply(fromUserId, reply, true);
-							} else {
-								client.sendText(fromUserId, "收到你的语音，但语音识别失败。请用文字发送消息。");
-								System.out.println("⚠ 语音识别失败，已通知用户");
-							}
-						} catch (Exception ex) {
-							System.err.println("❌ 语音处理失败: " + ex.getMessage());
-							ex.printStackTrace();
-							try {
-								client.sendText(fromUserId, "收到你的语音，但处理时出错: " + ex.getMessage());
-							} catch (Exception ignored) {}
+							voiceText = llmService.transcribeAudio(voiceBytes, format);
+							System.out.println("📝 ASR识别结果: " + (voiceText != null ? voiceText : "(失败)"));
 						}
+
+						if (voiceText != null && !voiceText.isEmpty()) {
+							System.out.println("💬 语音内容: " + voiceText);
+							String reply = routeMessage(fromUserId, voiceText, true);
+							System.out.println("🤖 回复 [" + fromUserId + "]: " + reply);
+							routeReply(fromUserId, reply, true);
 						} else {
-							System.out.println("❓ 收到未知类型消息 [" + fromUserId + "], item类型: " + item.getClass().getName());
-							System.out.println("   item内容: " + item.toString());
+							client.sendText(fromUserId, "收到你的语音，但语音识别失败。请用文字发送消息。");
+							System.out.println("⚠ 语音识别失败，已通知用户");
 						}
+					} catch (Exception ex) {
+						System.err.println("❌ 语音处理失败: " + ex.getMessage());
+						ex.printStackTrace();
+						try {
+							client.sendText(fromUserId, "收到你的语音，但处理时出错: " + ex.getMessage());
+						} catch (Exception ignored) {}
+					}
+				} else {
+					System.out.println("❓ 收到未知类型消息 [" + fromUserId + "], item类型: " + item.getClass().getName());
+					System.out.println("   item内容: " + item.toString());
+				}
 			}
 		} catch (Exception e) {
 			System.err.println("⚠ 处理消息异常: " + e.getMessage());
 		}
+	}
+
+	/**
+	 * 消息路由核心逻辑：Skill → RAG → LLM 兜底
+	 */
+	private String routeMessage(String fromUserId, String text, boolean fromVoice) {
+		String skillResult = skillService.tryMatch(text);
+		if (skillResult != null) {
+			System.out.println("🎯 [路由] Skill 命中，直接回复");
+			return skillResult;
+		}
+
+		String ragContext = ragService.retrieve(text);
+		if (ragContext != null) {
+			System.out.println("🔍 [路由] RAG 命中，增强 Prompt 后调用 LLM");
+			return llmService.chat(fromUserId, text, fromVoice, ragContext);
+		}
+
+		System.out.println("💬 [路由] Skill/RAG 均未命中，LLM 闲聊兜底");
+		return llmService.chat(fromUserId, text, fromVoice);
 	}
 
 	private void routeReply(String fromUserId, String reply, boolean fromVoice) {
@@ -283,7 +320,7 @@ public class DemoWkxApplication implements CommandLineRunner {
 				System.out.println("⚠ 语音文件发送失败，回退文字: " + e.getMessage());
 				e.printStackTrace();
 				client.sendText(fromUserId, content);
-				}
+			}
 		} else {
 			client.sendText(fromUserId, "语音合成失败，请稍后重试。");
 		}
@@ -300,10 +337,16 @@ public class DemoWkxApplication implements CommandLineRunner {
 				5. 图片分析 - 发图片，AI分析内容
 				6. 天气查询 - 问"北京天气怎么样"，AI自动调用天气工具
 				7. 时间查询 - 问"现在几点"，AI自动调用时间工具
-				8. 清空对话 - 发"清空"重置对话历史
-				9. 帮助 - 发"帮助"查看此菜单
+				8. 星座运势 - 发"运势"或"今日运势"查看星座运势（自定义Skill）
+				9. RAG开关 - 发"rag开关"开启/关闭RAG增强
+				10. RAG状态 - 发"rag状态"查看RAG当前状态
+				11. 清空对话 - 发"清空"重置对话历史
+				12. 帮助 - 发"帮助"查看此菜单
 
 				🔧 支持 Function Calling：AI自动判断是否调用工具
+				🎯 自定义Skill：关键词命中直接执行（星座运势）
+				📚 RAG检索增强：知识库关键词匹配，增强LLM回答
+				🛤️ 消息路由：Skill → RAG → LLM 三级路由
 				🧠 AI会自动判断用文字、语音还是图片回复
 				📅 支持农历日期、星座四象分类查询
 				🔊 语音回复以MP3文件形式发送，点击可播放
