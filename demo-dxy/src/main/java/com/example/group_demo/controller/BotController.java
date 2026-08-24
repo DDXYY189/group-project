@@ -31,6 +31,8 @@ public class BotController {
         result.put("connectionStatus", botService.getConnectionStatus());
         result.put("llmConfigured", botService.isLlmConfigured());
         result.put("tools", botService.getToolNames());
+        result.put("skills", botService.getSkillNames());
+        result.put("ragEnabled", botService.isRagEnabled());
         result.put("loginError", botService.getLoginError());
         if (botService.getLoginContext() != null) {
             result.put("botId", botService.getLoginContext().getBotId());

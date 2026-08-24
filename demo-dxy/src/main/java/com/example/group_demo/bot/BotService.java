@@ -5,6 +5,8 @@ import com.example.group_demo.image.ImageService;
 import com.example.group_demo.intent.Intent;
 import com.example.group_demo.intent.ImageTextMerger;
 import com.example.group_demo.intent.IntentService;
+import com.example.group_demo.rag.RagService;
+import com.example.group_demo.tool.SkillRegistry;
 import com.example.group_demo.tool.ToolRegistry;
 import com.example.group_demo.voice.VoiceService;
 import com.github.wechat.ilink.sdk.ILinkClient;
@@ -48,6 +50,9 @@ public class BotService implements ApplicationRunner {
     private final ToolRegistry toolRegistry;
     private final ImageTextMerger imageTextMerger;
     private final MessageDispatcher messageDispatcher;
+    private final MessageRouter messageRouter;
+    private final SkillRegistry skillRegistry;
+    private final RagService ragService;
 
     private volatile byte[] qrPng;
     private volatile String loginError;
@@ -56,7 +61,8 @@ public class BotService implements ApplicationRunner {
     public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService,
                       IntentService intentService, ImageService imageService,
                       ToolRegistry toolRegistry, ImageTextMerger imageTextMerger,
-                      MessageDispatcher messageDispatcher) {
+                      MessageDispatcher messageDispatcher, MessageRouter messageRouter,
+                      SkillRegistry skillRegistry, RagService ragService) {
         this.client = client;
         this.llmService = llmService;
         this.voiceService = voiceService;
@@ -65,6 +71,9 @@ public class BotService implements ApplicationRunner {
         this.toolRegistry = toolRegistry;
         this.imageTextMerger = imageTextMerger;
         this.messageDispatcher = messageDispatcher;
+        this.messageRouter = messageRouter;
+        this.skillRegistry = skillRegistry;
+        this.ragService = ragService;
     }
 
     @Override
@@ -184,17 +193,17 @@ public class BotService implements ApplicationRunner {
         }
         Intent intent = intentService.classify(userText);
         if (intent == null || intent.action() == null) {
-            safeSendText(fromUserId, replyToText(fromUserId, userText));
+            safeSendText(fromUserId, messageRouter.route(fromUserId, userText));
             return;
         }
         switch (intent.action()) {
             case "voice" -> sendVoiceReply(fromUserId,
-                replyToText(fromUserId, cleanInstruction(userText)));
+                messageRouter.route(fromUserId, cleanInstruction(userText)));
             case "image" -> sendImageReply(fromUserId,
                 intent.imagePrompt() != null ? intent.imagePrompt() : userText,
                 intent.reply() != null ? intent.reply() : "图片生成完成");
-            // 文本回复必须走带记忆的 chat，否则模型看不到历史上下文
-            default -> safeSendText(fromUserId, replyToText(fromUserId, userText));
+            // 文本回复走三层路由：Skill → RAG → LLM+Function Calling
+            default -> safeSendText(fromUserId, messageRouter.route(fromUserId, userText));
         }
     }
 
@@ -405,17 +414,6 @@ public class BotService implements ApplicationRunner {
         return sb.toString().trim();
     }
 
-    private String replyToText(String fromUserId, String userText) {
-        if (llmService.isConfigured()) {
-            try {
-                return llmService.chatWithTools(fromUserId, userText);
-            } catch (Exception e) {
-                log.warn("LLM 文本调用失败，回退为回显：{}", e.getMessage());
-            }
-        }
-        return "收到：" + userText;
-    }
-
     private byte[] buildQrPng(String qrContent) throws IOException, WriterException {
         String content = qrContent == null ? "" : qrContent.trim();
         if (content.startsWith("data:image")) {
@@ -457,5 +455,13 @@ public class BotService implements ApplicationRunner {
 
     public List<String> getToolNames() {
         return toolRegistry.names();
+    }
+
+    public List<String> getSkillNames() {
+        return skillRegistry.names();
+    }
+
+    public boolean isRagEnabled() {
+        return ragService.isEnabled();
     }
 }
