@@ -70,9 +70,17 @@ public class LlmService {
     }
 
     public String chatWithTools(String userId, String userText) {
-        List<Map<String, Object>> messages = buildMemoryMessages(userId, userText);
+        return chatWithTools(userId, userText, null, null);
+    }
 
-        List<Map<String, Object>> toolSchemas = toolRegistry.jsonSchemas();
+    /**
+     * 支持技能场景：extraSystemPrompt 会追加到系统提示词，toolNames 为 null 时开放全部工具。
+     */
+    public String chatWithTools(String userId, String userText, String extraSystemPrompt,
+                                List<String> toolNames) {
+        List<Map<String, Object>> messages = buildMemoryMessages(userId, userText, extraSystemPrompt);
+
+        List<Map<String, Object>> toolSchemas = toolRegistry.jsonSchemas(toolNames);
         int maxRounds = Math.max(1, properties.getToolMaxRounds());
         String lastToolResult = null;
         for (int round = 0; round < maxRounds; round++) {
@@ -136,6 +144,14 @@ public class LlmService {
         throw new IllegalStateException("LLM 工具调用超过最大轮数 " + maxRounds);
     }
 
+    /**
+     * 直接执行类技能回复后也写入对话记忆，保持上下文连续。
+     */
+    public void recordTurn(String userId, String userText, String reply) {
+        conversationMemory.append(userId, "user", userText);
+        conversationMemory.append(userId, "assistant", reply);
+    }
+
     private String withOriginalSearchQuery(String argumentsJson, String userText) {
         try {
             JsonNode node = objectMapper.readTree(argumentsJson);
@@ -151,9 +167,18 @@ public class LlmService {
     }
 
     private List<Map<String, Object>> buildMemoryMessages(String userId, String userText) {
+        return buildMemoryMessages(userId, userText, null);
+    }
+
+    private List<Map<String, Object>> buildMemoryMessages(String userId, String userText,
+                                                          String extraSystemPrompt) {
         ConversationMemoryService.ChatContext context = prepareMemoryContext(userId);
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+        String systemContent = SYSTEM_PROMPT;
+        if (extraSystemPrompt != null && !extraSystemPrompt.isBlank()) {
+            systemContent = systemContent + "\n\n" + extraSystemPrompt;
+        }
+        messages.add(Map.of("role", "system", "content", systemContent));
         if (context.summary() != null && !context.summary().isBlank()) {
             messages.add(Map.of(
                 "role", "system",

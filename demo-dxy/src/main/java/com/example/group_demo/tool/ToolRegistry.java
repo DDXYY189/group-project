@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class ToolRegistry {
@@ -52,6 +53,20 @@ public class ToolRegistry {
 
     public List<Map<String, Object>> jsonSchemas() {
         return all().stream().map(BotTool::jsonSchema).toList();
+    }
+
+    /**
+     * 只返回指定工具名的 schema；names 为 null 时返回全部工具。
+     */
+    public List<Map<String, Object>> jsonSchemas(List<String> names) {
+        if (names == null) {
+            return jsonSchemas();
+        }
+        return names.stream()
+            .map(tools::get)
+            .filter(Objects::nonNull)
+            .map(BotTool::jsonSchema)
+            .toList();
     }
 
     public String execute(String userId, String name, String argumentsJson) {

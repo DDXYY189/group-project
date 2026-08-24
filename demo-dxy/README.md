@@ -47,6 +47,60 @@ mvn spring-boot:run
 
 已内置工具：天气查询、待办管理、当前时间、联网搜索、翻译、随机数、查单词、热点资讯、清除记忆。对话记忆支持长时摘要与 TTL 过期。
 
+## Skill 路由
+
+新增 `skill` 包与 `router` 包，文本消息统一走 `MessageRouter`：
+
+- 命中 Skill 关键词 -> Skill 执行
+- 未命中 -> 命中 RAG 关键词 -> 增强 Prompt -> LLM 回复
+- 都没命中 -> LLM 工具对话兜底
+
+`Skill` 接口支持两种执行模式：
+
+- 直接执行：`directReply()` 返回 true，命中后调用 `execute()` 返回结果
+- LLM 驱动：把 `instructions()` 注入系统提示词，并只开放 `allowedTools()` 声明的工具
+
+`SkillRegistry` 启动时自动收集所有 Skill Bean，新增技能只需新增一个实现类，不需要改注册代码。
+
+已内置技能：
+
+- `travel_planner` 旅行规划：关键词为旅游、旅行、攻略、行程等，注入规划指令，只开放 `web_search`、`query_weather`、`manage_todo` 三个工具
+
+调试接口：
+
+```powershell
+# 查看已注册技能
+Invoke-RestMethod http://localhost:8080/api/bot/skills
+
+# 测试路由：命中技能/兜底闲聊
+Invoke-RestMethod "http://localhost:8080/api/bot/route?q=帮我规划成都三日游&userId=demo"
+```
+
+## RAG 关键词检索
+
+极简关键词版 RAG：启动时加载 `src/main/resources/knowledge/*.md`，按段落切块后用中英文关键词构建倒排索引，查询时按命中次数返回 top-k 资料块，并作为“参考资料”注入系统提示词。
+
+配置项：
+
+- `rag.enabled`：是否启用 RAG，默认 `true`
+- `rag.top-k`：最多返回几个资料块，默认 `3`
+
+调试接口：
+
+```powershell
+# 查看 RAG 开关、知识块数量
+Invoke-RestMethod http://localhost:8080/api/bot/rag/status
+
+# 开启/关闭 RAG（对比测试）
+Invoke-RestMethod -Method Post "http://localhost:8080/api/bot/rag/toggle?enabled=false"
+Invoke-RestMethod -Method Post "http://localhost:8080/api/bot/rag/toggle?enabled=true"
+
+# 查看关键词检索命中结果
+Invoke-RestMethod "http://localhost:8080/api/bot/rag/search?q=校庆是什么时候"
+```
+
+对比测试：在 `rag.enabled=false` 与 `rag.enabled=true` 两种状态下问同一个问题，例如“学校校庆是什么时候”，关闭时模型只能凭自身知识回答，开启时 prompt 会包含知识库中的“11 月 18 日”资料。
+
 ## 多步工具链
 
 `ToolChainService` 支持确定性的工具链式调用：下一步的参数模板通过 `{{prev.xxx}}` 引用上一步的执行结果，任一步失败立即中断。已注册两条链：

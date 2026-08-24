@@ -6,6 +6,7 @@ import com.example.group_demo.image.ImageService;
 import com.example.group_demo.intent.ImageTextMerger;
 import com.example.group_demo.intent.IntentService;
 import com.example.group_demo.llm.LlmService;
+import com.example.group_demo.router.MessageRouter;
 import com.example.group_demo.tool.ToolRegistry;
 import com.example.group_demo.voice.VoiceService;
 import com.github.wechat.ilink.sdk.ILinkClient;
@@ -48,11 +49,13 @@ public class BotSessionManager {
     private final ToolRegistry toolRegistry;
     private final ImageTextMerger imageTextMerger;
     private final MessageDispatcher messageDispatcher;
+    private final MessageRouter messageRouter;
 
     public BotSessionManager(SessionStore sessionStore, LlmService llmService,
                              VoiceService voiceService, IntentService intentService,
                              ImageService imageService, ToolRegistry toolRegistry,
-                             ImageTextMerger imageTextMerger, MessageDispatcher messageDispatcher) {
+                             ImageTextMerger imageTextMerger, MessageDispatcher messageDispatcher,
+                             MessageRouter messageRouter) {
         this.sessionStore = sessionStore;
         this.llmService = llmService;
         this.voiceService = voiceService;
@@ -61,6 +64,7 @@ public class BotSessionManager {
         this.toolRegistry = toolRegistry;
         this.imageTextMerger = imageTextMerger;
         this.messageDispatcher = messageDispatcher;
+        this.messageRouter = messageRouter;
     }
 
     @PostConstruct
@@ -159,7 +163,7 @@ public class BotSessionManager {
         }
         ILinkClient client = builder.build();
         BotService bot = new BotService(sessionId, client, llmService, voiceService,
-            intentService, imageService, toolRegistry, imageTextMerger, messageDispatcher);
+            intentService, imageService, toolRegistry, imageTextMerger, messageDispatcher, messageRouter);
         botRef.set(bot);
         return bot;
     }

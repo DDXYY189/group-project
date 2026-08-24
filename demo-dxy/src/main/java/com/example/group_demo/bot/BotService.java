@@ -5,6 +5,7 @@ import com.example.group_demo.image.ImageService;
 import com.example.group_demo.intent.Intent;
 import com.example.group_demo.intent.ImageTextMerger;
 import com.example.group_demo.intent.IntentService;
+import com.example.group_demo.router.MessageRouter;
 import com.example.group_demo.tool.ToolRegistry;
 import com.example.group_demo.voice.VoiceService;
 import com.github.wechat.ilink.sdk.ILinkClient;
@@ -44,6 +45,7 @@ public class BotService {
     private final ToolRegistry toolRegistry;
     private final ImageTextMerger imageTextMerger;
     private final MessageDispatcher messageDispatcher;
+    private final MessageRouter messageRouter;
 
     private volatile byte[] qrPng;
     private volatile String loginError;
@@ -52,7 +54,7 @@ public class BotService {
     public BotService(String sessionId, ILinkClient client, LlmService llmService,
                       VoiceService voiceService, IntentService intentService, ImageService imageService,
                       ToolRegistry toolRegistry, ImageTextMerger imageTextMerger,
-                      MessageDispatcher messageDispatcher) {
+                      MessageDispatcher messageDispatcher, MessageRouter messageRouter) {
         this.sessionId = sessionId;
         this.client = client;
         this.llmService = llmService;
@@ -62,6 +64,7 @@ public class BotService {
         this.toolRegistry = toolRegistry;
         this.imageTextMerger = imageTextMerger;
         this.messageDispatcher = messageDispatcher;
+        this.messageRouter = messageRouter;
     }
 
     public void startLogin() {
@@ -401,7 +404,7 @@ public class BotService {
     private String replyToText(String fromUserId, String userText) {
         if (llmService.isConfigured()) {
             try {
-                return llmService.chatWithTools(fromUserId, userText);
+                return messageRouter.route(fromUserId, userText);
             } catch (Exception e) {
                 log.warn("LLM 文本调用失败，回退为回显：{}", e.getMessage());
             }
