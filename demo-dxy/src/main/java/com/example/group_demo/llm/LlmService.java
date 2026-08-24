@@ -65,7 +65,19 @@ public class LlmService {
     }
 
     public String chatWithTools(String userId, String userText) {
-        List<Map<String, Object>> messages = buildMemoryMessages(userId, userText);
+        return chatWithTools(userId, userText, null);
+    }
+
+    /**
+     * 带 RAG 知识增强的工具对话。
+     *
+     * @param userId          用户ID
+     * @param userText        用户输入
+     * @param systemAddon     追加到 SystemPrompt 的增强内容（如 RAG 检索结果），为空则不追加
+     * @return 模型回复
+     */
+    public String chatWithTools(String userId, String userText, String systemAddon) {
+        List<Map<String, Object>> messages = buildMemoryMessages(userId, userText, systemAddon);
 
         List<Map<String, Object>> toolSchemas = toolRegistry.jsonSchemas();
         int maxRounds = Math.max(1, properties.getToolMaxRounds());
@@ -129,9 +141,17 @@ public class LlmService {
     }
 
     private List<Map<String, Object>> buildMemoryMessages(String userId, String userText) {
+        return buildMemoryMessages(userId, userText, null);
+    }
+
+    private List<Map<String, Object>> buildMemoryMessages(String userId, String userText, String systemAddon) {
         ConversationMemoryService.ChatContext context = prepareMemoryContext(userId);
         List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+        String systemContent = SYSTEM_PROMPT;
+        if (systemAddon != null && !systemAddon.isBlank()) {
+            systemContent = SYSTEM_PROMPT + "\n\n" + systemAddon;
+        }
+        messages.add(Map.of("role", "system", "content", systemContent));
         if (context.summary() != null && !context.summary().isBlank()) {
             messages.add(Map.of(
                 "role", "system",

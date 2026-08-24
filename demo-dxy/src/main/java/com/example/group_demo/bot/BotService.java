@@ -5,6 +5,9 @@ import com.example.group_demo.image.ImageService;
 import com.example.group_demo.intent.Intent;
 import com.example.group_demo.intent.ImageTextMerger;
 import com.example.group_demo.intent.IntentService;
+import com.example.group_demo.rag.RagService;
+import com.example.group_demo.skill.Skill;
+import com.example.group_demo.skill.SkillRegistry;
 import com.example.group_demo.tool.ToolRegistry;
 import com.example.group_demo.voice.VoiceService;
 import com.github.wechat.ilink.sdk.ILinkClient;
@@ -48,6 +51,8 @@ public class BotService implements ApplicationRunner {
     private final ToolRegistry toolRegistry;
     private final ImageTextMerger imageTextMerger;
     private final MessageDispatcher messageDispatcher;
+    private final SkillRegistry skillRegistry;
+    private final RagService ragService;
 
     private volatile byte[] qrPng;
     private volatile String loginError;
@@ -56,7 +61,8 @@ public class BotService implements ApplicationRunner {
     public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService,
                       IntentService intentService, ImageService imageService,
                       ToolRegistry toolRegistry, ImageTextMerger imageTextMerger,
-                      MessageDispatcher messageDispatcher) {
+                      MessageDispatcher messageDispatcher, SkillRegistry skillRegistry,
+                      RagService ragService) {
         this.client = client;
         this.llmService = llmService;
         this.voiceService = voiceService;
@@ -65,6 +71,8 @@ public class BotService implements ApplicationRunner {
         this.toolRegistry = toolRegistry;
         this.imageTextMerger = imageTextMerger;
         this.messageDispatcher = messageDispatcher;
+        this.skillRegistry = skillRegistry;
+        this.ragService = ragService;
     }
 
     @Override
@@ -182,6 +190,46 @@ public class BotService implements ApplicationRunner {
             safeSendText(fromUserId, "好的，请把图片发给我，我来帮你识别。");
             return;
         }
+
+        // ============================================================
+        // 固定顺序消息路由：Skill → RAG → LLM 兜底闲聊
+        // 测试说明：
+        //   ①测试Skill分支：发送 "距离12月4日还有多久" 或 "倒计时 春节"（需含日期）
+        //   ②测试RAG开启：  发送 "你们公司介绍" 或 "价格多少"（rag.enable-rag=true 时生效）
+        //   ③测试RAG关闭：  修改配置 rag.enable-rag=false 后发送 "你们公司介绍"
+        //   ④测试兜底闲聊：  发送 "你好" 或 "今天天气怎么样" 等普通对话
+        // ============================================================
+
+        // 第1步：Skill 关键词匹配（优先级最高）
+        Skill matchedSkill = skillRegistry.match(userText);
+        if (matchedSkill != null) {
+            log.info("【执行Skill】userId={} skill={} userText={}", fromUserId, matchedSkill.name(), userText);
+            String result = matchedSkill.execute(fromUserId, userText);
+            safeSendText(fromUserId, result);
+            return;
+        }
+
+        // 第2步：RAG 关键词检索（开关开启且命中时增强 Prompt）
+        if (ragService.isEnabled()) {
+            List<String> ragFragments = ragService.search(userText);
+            if (ragFragments != null && !ragFragments.isEmpty()) {
+                log.info("【RAG增强prompt】userId={} hitCount={} userText={}",
+                    fromUserId, ragFragments.size(), userText);
+                String augmentedPrompt = ragService.buildAugmentedPrompt(ragFragments);
+                String reply;
+                if (llmService.isConfigured()) {
+                    reply = replyToTextWithRag(fromUserId, userText, augmentedPrompt);
+                } else {
+                    log.warn("LLM 未配置，RAG 命中但无法调用大模型，直接返回知识库原文");
+                    reply = "【RAG检索结果（LLM未配置，返回知识库原文）】\n" + String.join("\n---\n", ragFragments);
+                }
+                safeSendText(fromUserId, reply);
+                return;
+            }
+        }
+
+        // 第3步：LLM 兜底闲聊（正常对话回复）
+        log.info("【LLM兜底闲聊】userId={} userText={}", fromUserId, userText);
         Intent intent = intentService.classify(userText);
         if (intent == null || intent.action() == null) {
             safeSendText(fromUserId, replyToText(fromUserId, userText));
@@ -411,6 +459,20 @@ public class BotService implements ApplicationRunner {
                 return llmService.chatWithTools(fromUserId, userText);
             } catch (Exception e) {
                 log.warn("LLM 文本调用失败，回退为回显：{}", e.getMessage());
+            }
+        }
+        return "收到：" + userText;
+    }
+
+    /**
+     * 带 RAG 知识增强的文本回复。
+     */
+    private String replyToTextWithRag(String fromUserId, String userText, String systemAddon) {
+        if (llmService.isConfigured()) {
+            try {
+                return llmService.chatWithTools(fromUserId, userText, systemAddon);
+            } catch (Exception e) {
+                log.warn("LLM RAG文本调用失败，回退为回显：{}", e.getMessage());
             }
         }
         return "收到：" + userText;
