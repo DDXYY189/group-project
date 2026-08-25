@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 智能穿搭顾问</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.75);
+            --accent: #e8956f;
+            --accent-light: rgba(232, 149, 111, 0.3);
+            --input-bg: rgba(255, 255, 255, 0.1);
+            --input-border: rgba(255, 255, 255, 0.25);
+            --card-bg: rgba(255, 255, 255, 0.12);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #3a1c4e 60%, #2d1b4e 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease infinite;
+            padding: 20px 16px;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 560px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* ========== 顶部标题 ========== */
+        .header {
+            text-align: center;
+            padding: 12px 0 4px;
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #e8956f, #f0a878, #d4a5c8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            letter-spacing: 1px;
+        }
+
+        /* ========== 毛玻璃卡片基础 ========== */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(140%);
+            -webkit-backdrop-filter: blur(20px) saturate(140%);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: var(--glass-shadow);
+            padding: 24px 20px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .section-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title .icon {
+            font-size: 1.2rem;
+        }
+
+        /* ========== 表单 ========== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            outline: none;
+            transition: all 0.25s ease;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+
+        .form-group select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 34px;
+        }
+
+        .form-group select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        /* 颜色输入特殊样式 */
+        .color-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-input-wrapper input[type="color"] {
+            width: 40px;
+            height: 38px;
+            padding: 4px;
+            border-radius: 10px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .color-input-wrapper input[type="text"] {
+            flex: 1;
+        }
+
+        /* ========== 按钮 ========== */
+        .btn {
+            width: 100%;
+            padding: 13px 20px;
+            border: none;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            margin-top: 18px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #e8956f, #d4795f);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(232, 149, 111, 0.35);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 28px rgba(232, 149, 111, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
+            color: #fff;
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ========== 情景输入区域 ========== */
+        .scenario-section {
+            display: none;
+        }
+
+        .scenario-section.active {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========== 推荐结果区域 ========== */
+        .result-section {
+            display: none;
+        }
+
+        .result-section.active {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .result-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .tag-season {
+            background: rgba(232, 149, 111, 0.25);
+            border: 1px solid rgba(232, 149, 111, 0.4);
+            color: #f0a878;
+        }
+
+        .tag-mode {
+            background: rgba(100, 200, 150, 0.2);
+            border: 1px solid rgba(100, 200, 150, 0.4);
+            color: #7ed8a8;
+            font-size: 0.65rem;
+        }
+
+        .tag-mode.real {
+            background: rgba(100, 180, 255, 0.2);
+            border-color: rgba(100, 180, 255, 0.4);
+            color: #7ec5ff;
+        }
+
+        .outfit-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .outfit-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            transition: all 0.25s ease;
+        }
+
+        .outfit-card:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .outfit-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .outfit-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .outfit-info .name {
+            font-size: 0.92rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .outfit-info .meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+
+        .outfit-info .meta span {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+        }
+
+        .outfit-info .desc {
+            font-size: 0.76rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .reason-box {
+            margin-top: 16px;
+            padding: 14px 16px;
+            background: rgba(232, 149, 111, 0.12);
+            border: 1px solid rgba(232, 149, 111, 0.25);
+            border-radius: 14px;
+            font-size: 0.82rem;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .reason-box .label {
+            font-weight: 600;
+            color: #f0a878;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        /* 搜索结果 */
+        .search-results {
+            margin-top: 16px;
+        }
+
+        .search-results summary {
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 8px 0;
+        }
+
+        .search-result-item {
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+
+        .search-result-item a {
+            color: #7ec5ff;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .search-result-item p {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        /* ========== 加载动画 ========== */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* ========== 错误提示 ========== */
+        .error-msg {
+            display: none;
+            padding: 12px 16px;
+            background: rgba(255, 80, 80, 0.15);
+            border: 1px solid rgba(255, 80, 80, 0.3);
+            border-radius: 12px;
+            font-size: 0.82rem;
+            color: #ff8888;
+            text-align: center;
+        }
+
+        .error-msg.active {
+            display: block;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        /* ========== 空状态 ========== */
+        .empty-hint {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            margin: 20px 0;
+        }
+
+        /* ========== 移动端适配 ========== */
+        @media (max-width: 480px) {
+            body {
+                padding: 12px 10px;
+            }
+
+            .header h1 {
+                font-size: 1.35rem;
+                letter-spacing: 1px;
+            }
+
+            .header p {
+                font-size: 0.75rem;
+            }
+
+            .glass-card {
+                padding: 18px 14px;
+                border-radius: 16px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .form-group input,
+            .form-group select {
+                padding: 9px 12px;
+                font-size: 0.82rem;
+            }
+
+            .form-group label {
+                font-size: 0.7rem;
+            }
+
+            .section-title {
+                font-size: 0.95rem;
+            }
+
+            .outfit-card {
+                padding: 12px;
+                gap: 10px;
+            }
+
+            .outfit-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.25rem;
+                border-radius: 12px;
+            }
+
+            .outfit-info .name {
+                font-size: 0.85rem;
+            }
+
+            .outfit-info .desc {
+                font-size: 0.72rem;
+            }
+
+            .btn {
+                padding: 11px 16px;
+                font-size: 0.88rem;
+            }
+
+            .reason-box {
+                font-size: 0.78rem;
+                padding: 12px 14px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部标题 -->
+        <div class="header">
+            <h1>AI 智能穿搭顾问</h1>
+            <p>根据你的画像和场景，生成专属穿搭方案</p>
+        </div>
+
+        <!-- 用户画像表单 -->
+        <div class="glass-card" id="profileCard">
+            <div class="section-title">
+                <span class="icon">👤</span> 用户画像
+            </div>
+            <form action="/save" method="POST" id="profileForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>年龄</label>
+                        <input type="number" name="age" min="10" max="100" placeholder="25"
+                               value="{{ profile.age if profile else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>身高 (cm)</label>
+                        <input type="number" name="height" min="100" max="250" step="0.1" placeholder="175"
+                               value="{{ profile.height if profile else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>体重 (kg)</label>
+                        <input type="number" name="weight" min="30" max="200" step="0.1" placeholder="68"
+                               value="{{ profile.weight if profile else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>衣服尺码</label>
+                        <select name="clothing_size">
+                            <option value="">请选择</option>
+                            {% for s in ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] %}
+                            <option value="{{ s }}" {{ 'selected' if profile and profile.clothing_size == s else '' }}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>鞋子尺码</label>
+                        <input type="text" name="shoe_size" placeholder="42" 
+                               value="{{ profile.shoe_size if profile else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>所在城市</label>
+                        <input type="text" name="city" placeholder="上海"
+                               value="{{ profile.city if profile else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>颜色偏好</label>
+                        <div class="color-input-wrapper">
+                            <input type="color" id="colorPicker" value="#e8956f">
+                            <input type="text" name="color_preference" placeholder="如：深蓝、白色"
+                                   value="{{ profile.color_preference if profile else '' }}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>幸运色</label>
+                        <div class="color-input-wrapper">
+                            <input type="color" id="luckyColorPicker" value="#d4a5c8">
+                            <input type="text" name="lucky_color" placeholder="如：金色、红色"
+                                   value="{{ profile.lucky_color if profile else '' }}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>日常穿衣风格</label>
+                        <select name="daily_style">
+                            <option value="">请选择</option>
+                            {% for s in ['休闲', '商务', '运动', '复古', '街头', '简约', '优雅', '工装'] %}
+                            <option value="{{ s }}" {{ 'selected' if profile and profile.daily_style == s else '' }}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>偏好面料</label>
+                        <select name="preferred_fabric">
+                            <option value="">请选择</option>
+                            {% for f in ['棉', '亚麻', '羊毛', '丝绸', '牛仔', '针织', '涤纶', '混纺', '羊绒'] %}
+                            <option value="{{ f }}" {{ 'selected' if profile and profile.preferred_fabric == f else '' }}>{{ f }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    {% if profile %}更新画像{% else %}保存画像{% endif %}
+                </button>
+            </form>
+        </div>
+
+        {% if profile %}
+        <!-- 情景输入区域 -->
+        <div class="glass-card scenario-section active" id="scenarioCard">
+            <div class="section-title">
+                <span class="icon">🎬</span> 情景输入
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>出行日期 / 时间</label>
+                    <input type="datetime-local" name="date" id="scenarioDate">
+                </div>
+                <div class="form-group">
+                    <label>具体地点</label>
+                    <select name="location" id="scenarioLocation">
+                        <option value="">请选择</option>
+                        {% for loc in ['海边', '写字楼', '公园', '餐厅', '商场', '咖啡厅', '户外', '室内', '体育馆', '博物馆'] %}
+                        <option value="{{ loc }}">{{ loc }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>出席场合</label>
+                    <select name="occasion" id="scenarioOccasion">
+                        <option value="">请选择</option>
+                        {% for occ in ['婚礼', '商务会议', '约会', '日常', '聚会', '面试', '旅行', '派对'] %}
+                        <option value="{{ occ }}">{{ occ }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="recommendBtn" onclick="getRecommendation()">
+                ✨ 生成搭配
+            </button>
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="error-msg" id="errorMsg"></div>
+
+        <!-- 加载动画 -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在生成你的专属穿搭方案...</p>
+        </div>
+
+        <!-- 推荐结果区域 -->
+        <div class="glass-card result-section" id="resultCard">
+            <div class="result-header">
+                <div class="section-title" style="margin-bottom:0;">
+                    <span class="icon">👔</span> 推荐搭配
+                </div>
+                <div class="result-tags" id="resultTags"></div>
+            </div>
+            <div class="outfit-cards" id="outfitCards"></div>
+            <div class="reason-box" id="reasonBox" style="display:none;">
+                <span class="label">💡 推荐理由</span>
+                <p id="reasonText"></p>
+            </div>
+            <details class="search-results" id="searchResultsBox" style="display:none;">
+                <summary>📋 查看网络搜索参考</summary>
+                <div id="searchResults" style="margin-top:10px;"></div>
+            </details>
+        </div>
+        {% else %}
+        <div class="glass-card empty-hint">
+            <p>👆 请先完善用户画像，保存后即可生成穿搭推荐</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // 颜色选择器联动
+        const colorPicker = document.getElementById('colorPicker');
+        if (colorPicker) {
+            const colorText = colorPicker.nextElementSibling;
+            colorPicker.addEventListener('input', function(e) {
+                colorText.value = e.target.value;
+            });
+        }
+        const luckyPicker = document.getElementById('luckyColorPicker');
+        if (luckyPicker) {
+            const luckyText = luckyPicker.nextElementSibling;
+            luckyPicker.addEventListener('input', function(e) {
+                luckyText.value = e.target.value;
+            });
+        }
+
+        // 设置默认日期时间为当前
+        const dateInput = document.getElementById('scenarioDate');
+        if (dateInput) {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            const localISO = new Date(now - offset).toISOString().slice(0, 16);
+            dateInput.value = localISO;
+        }
+
+        // 获取推荐搭配
+        function getRecommendation() {
+            const date = document.getElementById('scenarioDate')?.value || '';
+            const location = document.getElementById('scenarioLocation')?.value || '';
+            const occasion = document.getElementById('scenarioOccasion')?.value || '';
+
+            // 验证输入
+            const errorMsg = document.getElementById('errorMsg');
+            if (!location || !occasion) {
+                showError('请选择地点和场合');
+                return;
+            }
+
+            errorMsg.classList.remove('active');
+            
+            // 显示加载
+            const loading = document.getElementById('loading');
+            const resultCard = document.getElementById('resultCard');
+            const recommendBtn = document.getElementById('recommendBtn');
+            
+            loading.classList.add('active');
+            resultCard.classList.remove('active');
+            recommendBtn.disabled = true;
+            recommendBtn.textContent = '生成中...';
+
+            // 构建请求 URL
+            const params = new URLSearchParams({
+                date: date,
+                location: location,
+                occasion: occasion
+            });
+
+            // Fetch 请求后端
+            fetch(`/recommend?${params.toString()}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('服务器错误: ' + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+                    renderResult(data);
+                })
+                .catch(err => {
+                    console.error('Fetch error:', err);
+                    showError('请求失败，请检查网络或重试');
+                })
+                .finally(() => {
+                    loading.classList.remove('active');
+                    recommendBtn.disabled = false;
+                    recommendBtn.textContent = '✨ 生成搭配';
+                });
+        }
+
+        // 渲染推荐结果
+        function renderResult(data) {
+            const resultCard = document.getElementById('resultCard');
+            const tagsBox = document.getElementById('resultTags');
+            const cardsBox = document.getElementById('outfitCards');
+            const reasonBox = document.getElementById('reasonBox');
+            const reasonText = document.getElementById('reasonText');
+            const searchBox = document.getElementById('searchResultsBox');
+            const searchResults = document.getElementById('searchResults');
+
+            // 渲染标签
+            const modeLabel = data.mode === 'real' ? '🌐 真实搜索' : '🎯 模拟推荐';
+            const modeClass = data.mode === 'real' ? 'tag-mode real' : 'tag-mode';
+            tagsBox.innerHTML = `
+                <span class="tag tag-season">${data.season || '秋季'}</span>
+                <span class="tag ${modeClass}">${modeLabel}</span>
+            `;
+
+            // 渲染搭配卡片
+            const icons = { '上装': '👕', '下装': '👖', '鞋子': '👟' };
+            cardsBox.innerHTML = '';
+            
+            if (data.outfits && data.outfits.length > 0) {
+                data.outfits.forEach(item => {
+                    const icon = icons[item.category] || '🧥';
+                    const card = document.createElement('div');
+                    card.className = 'outfit-card';
+                    card.innerHTML = `
+                        <div class="outfit-icon">${icon}</div>
+                        <div class="outfit-info">
+                            <div class="name">${item.name || '推荐单品'}</div>
+                            <div class="meta">
+                                <span>${item.color || ''}</span>
+                                <span>${item.material || ''}</span>
+                            </div>
+                            <div class="desc">${item.description || ''}</div>
+                        </div>
+                    `;
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(15px)';
+                    card.style.transition = 'all 0.4s ease';
+                    cardsBox.appendChild(card);
+                    
+                    // 依次动画进入
+                    setTimeout(() => {
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, 100 + cardsBox.children.length * 150);
+                });
+            }
+
+            // 渲染推荐理由
+            if (data.reason) {
+                reasonText.textContent = data.reason;
+                reasonBox.style.display = 'block';
+            } else {
+                reasonBox.style.display = 'none';
+            }
+
+            // 渲染搜索结果（真实模式）
+            if (data.search_results && data.search_results.length > 0) {
+                searchResults.innerHTML = '';
+                data.search_results.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    div.innerHTML = `
+                        <a href="${item.link}" target="_blank" rel="noopener">${item.title || '搜索结果'}</a>
+                        <p>${item.snippet || ''}</p>
+                    `;
+                    searchResults.appendChild(div);
+                });
+                searchBox.style.display = 'block';
+            } else {
+                searchBox.style.display = 'none';
+            }
+
+            // 显示结果区域
+            resultCard.classList.add('active');
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 显示错误
+        function showError(msg) {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.textContent = msg;
+            errorMsg.classList.add('active');
+            setTimeout(() => errorMsg.classList.remove('active'), 3000);
+        }
+    </script>
+</body>
+</html>

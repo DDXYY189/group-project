@@ -7,6 +7,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * 自定义 Skill 服务
+ *
+ * Skill 与 Function Calling 的区别：
+ * - Function Calling: LLM 自主决定是否调用工具，灵活性高但依赖 LLM 推理能力
+ * - Skill: 基于关键词匹配，命中后直接执行，无需 LLM 参与，响应快、确定性高
+ *
+ * 本 Skill 实现：星座运势查询
+ * 关键词: "运势"、"今日运势"、"星座运势"、"运气"、"抽签"、"占卜"
+ */
 @Service
 public class SkillService {
 
@@ -17,6 +27,10 @@ public class SkillService {
     private static final String[] CONSTELLATIONS = {
         "白羊座", "金牛座", "双子座", "巨蟹座", "狮子座", "处女座",
         "天秤座", "天蝎座", "射手座", "摩羯座", "水瓶座", "双鱼座"
+    };
+
+    private static final String[] ELEMENTS = {
+        "火象", "土象", "风象", "水象"
     };
 
     private static final String[] LUCK_DESC = {
@@ -44,8 +58,13 @@ public class SkillService {
             new String[]{"运势", "今日运势", "星座运势", "运气", "抽签", "占卜"}));
     }
 
+    /**
+     * 尝试匹配 Skill 关键词
+     * @return 匹配则返回执行结果，不匹配返回 null
+     */
     public String tryMatch(String message) {
         if (message == null || message.isBlank()) return null;
+
         String text = message.trim();
         for (Skill skill : skills) {
             for (String keyword : skill.keywords()) {
@@ -58,22 +77,30 @@ public class SkillService {
         return null;
     }
 
+    /**
+     * 执行星座运势查询
+     * 从消息中提取星座名，未提取到则根据日期推断当日星座
+     */
     private String executeZodiacFortune(String message) {
         String constellation = extractConstellation(message);
         if (constellation == null) {
             constellation = getConstellationByDate(LocalDate.now());
         }
+
         String element = getElement(constellation);
         int seed = (LocalDate.now().getDayOfYear() + constellation.hashCode()) & 0x7fffffff;
         Random rng = new Random(seed);
+
         int overallIdx = rng.nextInt(LUCK_DESC.length);
         int careerIdx = rng.nextInt(CAREER_TIPS.length);
         int loveIdx = rng.nextInt(LOVE_TIPS.length);
         int healthIdx = rng.nextInt(HEALTH_TIPS.length);
         int luckyNumber = rng.nextInt(9) + 1;
-        int luckyScore = rng.nextInt(5) + 5;
+        int luckyScore = rng.nextInt(5) + 5; // 5~9
+
         String[] colors = {"红色", "橙色", "黄色", "绿色", "蓝色", "紫色", "粉色", "金色"};
         String luckyColor = colors[rng.nextInt(colors.length)];
+
         StringBuilder sb = new StringBuilder();
         sb.append("═══════════════════════\n");
         sb.append("  ✨ ").append(constellation).append(" 今日运势 ✨\n");
@@ -88,6 +115,7 @@ public class SkillService {
         sb.append("🎨 幸运颜色：").append(luckyColor).append("\n");
         sb.append("═══════════════════════\n");
         sb.append("(运势仅供娱乐，请理性看待~)");
+
         return sb.toString();
     }
 
