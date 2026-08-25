@@ -126,3 +126,43 @@ Invoke-RestMethod -Method Post -ContentType "application/json" `
 - `看看今天有什么热点，把第一条热点加到我的待办里`
 
 链式流程完成后机器人会直接回复每一步的执行结果，待办内容来自上一步工具的返回结果。
+
+## 长任务旅行规划 Agent
+
+旅行 Skill 已升级为长任务 Agent：用户只输入一句话目标，Agent 自动拆解并执行整条链路，最终产出一份完整成品。
+
+示例输入：
+
+```text
+预算 5000，帮我规划 4 月 1-3 号上海 3 日游
+```
+
+Agent 自动执行步骤：
+
+1. 解析目的地、天数、预算、日期、同行人和偏好；关键信息缺失时先补问一句
+2. 调用 `query_weather` 查询目的地天气
+3. 调用 `web_search` 搜索交通、景点、住宿和美食资料
+4. 检索本地 RAG 知识库 `knowledge/travel.md`，把旅行经验注入行程生成
+5. 让 LLM 生成结构化 JSON 行程方案
+6. 渲染并保存完整旅行网页，输出 `/api/trips/{id}.html` 链接
+7. 把每日行程和必做事项写入 `manage_todo`
+8. 可选生成封面图（`image`）和语音摘要（`voice`），失败时自动跳过，不影响成品
+
+调试接口：
+
+```powershell
+# 完整跑一遍长任务 Agent
+Invoke-RestMethod "http://localhost:8080/api/bot/travel-agent?q=帮我规划上海3日游&userId=demo"
+
+# 查看已生成的旅行网页
+Invoke-WebRequest "http://localhost:8080/api/trips/<pageId>.html"
+```
+
+在微信里直接发“帮我规划xx三日游”也会命中该 Skill，回复会带上网页链接。网页链接默认使用 `http://localhost:8080/api/trips`，如果要让微信/手机访问，把 `application.properties` 里的 `travel.page-base-url` 改成局域网或公网地址。
+
+配置项：
+
+- `travel.page-dir`：网页文件保存目录，默认 `data/trips`
+- `travel.page-base-url`：网页链接前缀，默认 `http://localhost:8080/api/trips`
+- `travel.generate-image`：是否生成封面图，默认 `true`
+- `travel.generate-voice`：是否生成语音摘要，默认 `true`

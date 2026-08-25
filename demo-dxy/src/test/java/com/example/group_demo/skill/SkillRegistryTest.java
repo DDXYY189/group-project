@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 class SkillRegistryTest {
 
-    private final TravelSkill travel = new TravelSkill();
+    private final TravelSkill travel = new TravelSkill(null);
 
     private Skill directSkill() {
         return new Skill() {
@@ -61,7 +61,7 @@ class SkillRegistryTest {
     void exposesSkillSummaries() {
         SkillRegistry registry = new SkillRegistry(List.of(travel));
         assertEquals("travel_planner", registry.summaries().get(0).get("name"));
-        assertEquals(List.of("web_search", "query_weather", "manage_todo"),
+        assertEquals(List.of(),
             registry.summaries().get(0).get("tools"));
     }
 }

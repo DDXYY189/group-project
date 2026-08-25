@@ -10,6 +10,8 @@ import com.example.group_demo.session.BotSessionManager;
 import com.example.group_demo.skill.SkillRegistry;
 import com.example.group_demo.tool.TodoService;
 import com.example.group_demo.tool.chain.ToolChainService;
+import com.example.group_demo.travel.TravelAgentResult;
+import com.example.group_demo.travel.TravelAgentService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.wechat.ilink.sdk.core.login.LoginContext;
@@ -40,12 +42,14 @@ public class BotController {
     private final SkillRegistry skillRegistry;
     private final MessageRouter messageRouter;
     private final KeywordRagService ragService;
+    private final TravelAgentService travelAgentService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public BotController(BotSessionManager sessionManager, ConversationMemoryService memoryService,
                          TodoService todoService, SearchService searchService,
                          ToolChainService toolChainService, SkillRegistry skillRegistry,
-                         MessageRouter messageRouter, KeywordRagService ragService) {
+                         MessageRouter messageRouter, KeywordRagService ragService,
+                         TravelAgentService travelAgentService) {
         this.sessionManager = sessionManager;
         this.memoryService = memoryService;
         this.todoService = todoService;
@@ -54,6 +58,7 @@ public class BotController {
         this.skillRegistry = skillRegistry;
         this.messageRouter = messageRouter;
         this.ragService = ragService;
+        this.travelAgentService = travelAgentService;
     }
 
     @PostMapping("/session")
@@ -175,6 +180,25 @@ public class BotController {
             result.put("error", e.getMessage());
         }
         return result;
+    }
+
+    @GetMapping("/travel-agent")
+    public Map<String, Object> travelAgent(@RequestParam("q") String goal,
+                                           @RequestParam(defaultValue = "demo") String userId) {
+        TravelAgentResult result = travelAgentService.run(userId, goal);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", result.status());
+        body.put("input", goal);
+        body.put("userId", userId);
+        body.put("reply", result.reply());
+        body.put("question", result.question());
+        body.put("htmlUrl", result.htmlUrl());
+        body.put("pageId", result.pageId());
+        body.put("steps", result.steps());
+        body.put("todoCount", result.todoCount());
+        body.put("imageGenerated", result.imageGenerated());
+        body.put("voiceGenerated", result.voiceGenerated());
+        return body;
     }
 
     @GetMapping("/rag/status")

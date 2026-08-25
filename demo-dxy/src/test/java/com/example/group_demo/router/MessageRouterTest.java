@@ -10,6 +10,8 @@ import com.example.group_demo.skill.SkillRegistry;
 import com.example.group_demo.skill.travel.TravelSkill;
 import com.example.group_demo.tool.BotTool;
 import com.example.group_demo.tool.ToolRegistry;
+import com.example.group_demo.travel.TravelAgentResult;
+import com.example.group_demo.travel.TravelAgentService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
@@ -104,24 +106,21 @@ class MessageRouterTest {
     }
 
     @Test
-    void routesTravelSkillWithInstructionsAndRestrictedTools() throws Exception {
-        ToolRegistry tools = new ToolRegistry(List.of(
-            tool("web_search"), tool("query_weather"), tool("manage_todo"),
-            tool("translate"), tool("get_hot_news")));
+    void routesTravelSkillToLongTaskAgentWithoutLlmCall() {
+        TravelSkill travel = new TravelSkill(new TravelAgentService(
+            null, null, null, null, null, null, null) {
+            @Override
+            public TravelAgentResult run(String userId, String goal) {
+                return TravelAgentResult.error("agent:" + goal);
+            }
+        });
         MessageRouter router = new MessageRouter(
-            new SkillRegistry(List.of(new TravelSkill())), newLlm(tools), disabledRag());
+            new SkillRegistry(List.of(travel)), newLlm(new ToolRegistry(List.of())), disabledRag());
 
         String reply = router.route("u1", "帮我规划成都三日游行程");
 
-        assertEquals("旅行助手回复", reply);
-        JsonNode first = objectMapper.readTree(requests.get(0));
-        String systemContent = first.path("messages").get(0).path("content").asText();
-        assertTrue(systemContent.contains("旅行规划助手"));
-        assertTrue(systemContent.contains("web_search"));
-        List<String> toolNames = new ArrayList<>();
-        first.path("tools").forEach(item ->
-            toolNames.add(item.path("function").path("name").asText()));
-        assertEquals(List.of("web_search", "query_weather", "manage_todo"), toolNames);
+        assertTrue(reply.contains("agent:帮我规划成都三日游行程"));
+        assertTrue(requests.isEmpty());
     }
 
     @Test
@@ -130,7 +129,7 @@ class MessageRouterTest {
             tool("web_search"), tool("query_weather"), tool("manage_todo"),
             tool("translate"), tool("get_hot_news")));
         MessageRouter router = new MessageRouter(
-            new SkillRegistry(List.of(new TravelSkill())), newLlm(tools), disabledRag());
+            new SkillRegistry(List.of(new TravelSkill(null))), newLlm(tools), disabledRag());
 
         String reply = router.route("u1", "今天心情怎么样");
 
