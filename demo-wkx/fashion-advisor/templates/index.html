@@ -5,892 +5,728 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI 智能穿搭顾问</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin:0; padding:0; box-sizing:border-box; }
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.15);
-            --glass-border: rgba(255, 255, 255, 0.3);
-            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.75);
+            --glass-bg: rgba(255,255,255,0.12);
+            --glass-border: rgba(255,255,255,0.25);
+            --glass-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            --text-primary: #fff;
+            --text-secondary: rgba(255,255,255,0.7);
             --accent: #e8956f;
-            --accent-light: rgba(232, 149, 111, 0.3);
-            --input-bg: rgba(255, 255, 255, 0.1);
-            --input-border: rgba(255, 255, 255, 0.25);
-            --card-bg: rgba(255, 255, 255, 0.12);
+            --accent-light: rgba(232,149,111,0.3);
+            --input-bg: rgba(255,255,255,0.08);
+            --input-border: rgba(255,255,255,0.2);
+            --card-bg: rgba(255,255,255,0.1);
+            --green: #7ed8a8;
+            --blue: #7ec5ff;
+            --red: #ff8888;
+            --gold: #ffd966;
         }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            min-height: 100vh;
-            color: var(--text-primary);
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #3a1c4e 60%, #2d1b4e 100%);
-            background-size: 200% 200%;
-            animation: gradientShift 15s ease infinite;
-            padding: 20px 16px;
-        }
-
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .container {
-            max-width: 560px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        /* ========== 顶部标题 ========== */
-        .header {
-            text-align: center;
-            padding: 12px 0 4px;
-        }
-
-        .header h1 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #e8956f, #f0a878, #d4a5c8);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: 2px;
-        }
-
-        .header p {
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-            margin-top: 6px;
-            letter-spacing: 1px;
-        }
-
-        /* ========== 毛玻璃卡片基础 ========== */
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px) saturate(140%);
-            -webkit-backdrop-filter: blur(20px) saturate(140%);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            box-shadow: var(--glass-shadow);
-            padding: 24px 20px;
-            transition: all 0.3s ease;
-        }
-
-        .glass-card:hover {
-            border-color: rgba(255, 255, 255, 0.4);
-        }
-
-        .section-title {
-            font-size: 1.05rem;
-            font-weight: 600;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .section-title .icon {
-            font-size: 1.2rem;
-        }
-
-        /* ========== 表单 ========== */
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .form-group.full {
-            grid-column: 1 / -1;
-        }
-
-        .form-group label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            letter-spacing: 0.5px;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 10px 14px;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 12px;
-            color: var(--text-primary);
-            font-size: 0.88rem;
-            outline: none;
-            transition: all 0.25s ease;
-            -webkit-appearance: none;
-            appearance: none;
-        }
-
-        .form-group input::placeholder {
-            color: rgba(255, 255, 255, 0.4);
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            border-color: var(--accent);
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 0 0 3px var(--accent-light);
-        }
-
-        .form-group select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            padding-right: 34px;
-        }
-
-        .form-group select option {
-            background: #1a1a2e;
-            color: #fff;
-        }
-
-        /* 颜色输入特殊样式 */
-        .color-input-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .color-input-wrapper input[type="color"] {
-            width: 40px;
-            height: 38px;
-            padding: 4px;
-            border-radius: 10px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .color-input-wrapper input[type="text"] {
-            flex: 1;
-        }
-
-        /* ========== 按钮 ========== */
-        .btn {
-            width: 100%;
-            padding: 13px 20px;
-            border: none;
-            border-radius: 14px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            letter-spacing: 1px;
-            margin-top: 18px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #e8956f, #d4795f);
-            color: #fff;
-            box-shadow: 0 4px 20px rgba(232, 149, 111, 0.35);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 28px rgba(232, 149, 111, 0.5);
-        }
-
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
-            color: #fff;
-            border: 1px solid var(--glass-border);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.25);
-        }
-
-        /* ========== 情景输入区域 ========== */
-        .scenario-section {
-            display: none;
-        }
-
-        .scenario-section.active {
-            display: block;
-            animation: fadeInUp 0.5s ease;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ========== 推荐结果区域 ========== */
-        .result-section {
-            display: none;
-        }
-
-        .result-section.active {
-            display: block;
-            animation: fadeInUp 0.5s ease;
-        }
-
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .result-tags {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-
-        .tag {
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 500;
-        }
-
-        .tag-season {
-            background: rgba(232, 149, 111, 0.25);
-            border: 1px solid rgba(232, 149, 111, 0.4);
-            color: #f0a878;
-        }
-
-        .tag-mode {
-            background: rgba(100, 200, 150, 0.2);
-            border: 1px solid rgba(100, 200, 150, 0.4);
-            color: #7ed8a8;
-            font-size: 0.65rem;
-        }
-
-        .tag-mode.real {
-            background: rgba(100, 180, 255, 0.2);
-            border-color: rgba(100, 180, 255, 0.4);
-            color: #7ec5ff;
-        }
-
-        .outfit-cards {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .outfit-card {
-            background: var(--card-bg);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 16px;
+            font-family: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+            min-height: 100vh; color: var(--text-primary);
+            background: linear-gradient(135deg,#1a1a2e 0%,#16213e 30%,#3a1c4e 60%,#2d1b4e 100%);
+            background-size: 200% 200%; animation: gradientShift 15s ease infinite;
             padding: 16px;
-            display: flex;
-            gap: 14px;
-            align-items: flex-start;
-            transition: all 0.25s ease;
         }
+        @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        .container { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 
-        .outfit-card:hover {
-            background: rgba(255, 255, 255, 0.18);
-            border-color: rgba(255, 255, 255, 0.3);
+        /* Header */
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; }
+        .header h1 { font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg,#e8956f,#f0a878,#d4a5c8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .user-badge { font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+        .logout-btn { padding: 6px 14px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); border-radius: 20px; color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; text-decoration: none; transition: all .25s; }
+        .logout-btn:hover { background: rgba(255,80,80,0.15); border-color: rgba(255,80,80,0.3); color: var(--red); }
+
+        /* Tabs */
+        .tab-bar { display: flex; gap: 0; background: rgba(255,255,255,0.06); border-radius: 14px; padding: 4px; }
+        .tab-btn { flex: 1; padding: 10px 8px; border: none; background: transparent; color: var(--text-secondary); font-size: 0.82rem; font-weight: 600; border-radius: 10px; cursor: pointer; transition: all .3s; }
+        .tab-btn.active { background: linear-gradient(135deg,#e8956f,#d4795f); color: #fff; box-shadow: 0 2px 12px rgba(232,149,111,0.3); }
+
+        /* Glass card */
+        .glass-card { background: var(--glass-bg); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: var(--glass-shadow); padding: 20px 16px; transition: all .3s; }
+        .section-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+        /* Form */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label { font-size: 0.72rem; color: var(--text-secondary); }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 9px 12px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; color: var(--text-primary); font-size: 0.85rem; outline: none; transition: all .25s; -webkit-appearance: none; appearance: none;
         }
+        .form-group input::placeholder { color: rgba(255,255,255,0.35); }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); background: rgba(255,255,255,0.12); box-shadow: 0 0 0 3px var(--accent-light); }
+        .form-group select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+        .form-group select option { background: #1a1a2e; color: #fff; }
+        .color-input-wrapper { display: flex; align-items: center; gap: 6px; }
+        .color-input-wrapper input[type="color"] { width: 36px; height: 34px; padding: 3px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+        .color-input-wrapper input[type="text"] { flex: 1; }
 
-        .outfit-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            flex-shrink: 0;
-            background: rgba(255, 255, 255, 0.12);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
+        /* Multi-select tags */
+        .multi-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .multi-tag { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--text-secondary); transition: all .2s; user-select: none; }
+        .multi-tag:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); }
+        .multi-tag.selected { background: rgba(232,149,111,0.25); border-color: rgba(232,149,111,0.5); color: #f0a878; font-weight: 600; }
+        .multi-tag .color-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
+        .other-input { margin-top: 8px; display: none; }
+        .other-input.active { display: block; }
+        .other-input input { width: 100%; padding: 9px 12px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; color: var(--text-primary); font-size: 0.85rem; outline: none; transition: all .25s; }
+        .other-input input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
 
-        .outfit-info {
-            flex: 1;
-            min-width: 0;
-        }
+        /* Buttons */
+        .btn { width: 100%; padding: 12px 18px; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all .3s; letter-spacing: 1px; margin-top: 14px; }
+        .btn-primary { background: linear-gradient(135deg,#e8956f,#d4795f); color: #fff; box-shadow: 0 4px 18px rgba(232,149,111,0.35); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(232,149,111,0.5); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid var(--glass-border); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.18); }
 
-        .outfit-info .name {
-            font-size: 0.92rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
+        /* Tab panels */
+        .tab-panel { display: none; animation: fadeInUp .4s ease; }
+        .tab-panel.active { display: block; }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 
-        .outfit-info .meta {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 6px;
-        }
+        /* Tags */
+        .tag { padding: 3px 10px; border-radius: 20px; font-size: 0.68rem; font-weight: 500; }
+        .tag-season { background: rgba(232,149,111,0.2); border: 1px solid rgba(232,149,111,0.35); color: #f0a878; }
+        .tag-weather { background: rgba(100,180,255,0.15); border: 1px solid rgba(100,180,255,0.3); color: var(--blue); font-size: 0.65rem; }
 
-        .outfit-info .meta span {
-            font-size: 0.7rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-secondary);
-        }
+        /* Outfit cards */
+        .outfit-cards { display: flex; flex-direction: column; gap: 10px; }
+        .outfit-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; transition: all .25s; }
+        .outfit-card:hover { background: rgba(255,255,255,0.15); }
+        .outfit-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12); }
+        .outfit-info { flex: 1; min-width: 0; }
+        .outfit-info .name { font-size: 0.88rem; font-weight: 600; margin-bottom: 3px; }
+        .outfit-info .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+        .outfit-info .meta span { font-size: 0.68rem; padding: 2px 7px; border-radius: 8px; background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+        .outfit-info .desc { font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5; }
+        .reason-box { margin-top: 14px; padding: 12px 14px; background: rgba(232,149,111,0.1); border: 1px solid rgba(232,149,111,0.22); border-radius: 12px; font-size: 0.8rem; line-height: 1.65; color: rgba(255,255,255,0.85); }
+        .reason-box .label { font-weight: 600; color: #f0a878; margin-bottom: 3px; display: block; }
 
-        .outfit-info .desc {
-            font-size: 0.76rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
+        /* Product comparison */
+        .product-item-group { margin-bottom: 16px; }
+        .product-item-group > h4 { font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .product-cards { display: flex; flex-direction: column; gap: 8px; }
+        .product-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; display: flex; gap: 10px; align-items: flex-start; transition: all .2s; }
+        .product-card.best { border-color: rgba(126,216,168,0.4); background: rgba(126,216,168,0.08); }
+        .product-card:hover { background: rgba(255,255,255,0.12); }
+        .product-platform { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; background: rgba(255,255,255,0.1); }
+        .product-info { flex: 1; min-width: 0; }
+        .product-info .pname { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .product-info .pname a { color: inherit; text-decoration: none; }
+        .product-info .pmeta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .pprice { font-size: 0.95rem; font-weight: 700; color: var(--accent); }
+        .porig { font-size: 0.7rem; color: rgba(255,255,255,0.35); text-decoration: line-through; }
+        .prating { font-size: 0.7rem; color: var(--gold); }
+        .pshipping { font-size: 0.68rem; color: var(--text-secondary); }
+        .pseller { font-size: 0.68rem; color: var(--text-secondary); }
+        .pplatform-badge { font-size: 0.65rem; font-weight: 600; padding: 2px 7px; border-radius: 8px; background: rgba(232,149,111,0.18); border: 1px solid rgba(232,149,111,0.3); color: #f0a878; }
+        .best-badge { padding: 2px 8px; border-radius: 8px; font-size: 0.65rem; font-weight: 600; background: rgba(126,216,168,0.2); border: 1px solid rgba(126,216,168,0.4); color: var(--green); }
+        .add-cart-btn { padding: 6px 12px; background: rgba(232,149,111,0.2); border: 1px solid rgba(232,149,111,0.4); border-radius: 8px; color: var(--accent); font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all .2s; flex-shrink: 0; text-decoration: none; display: flex; align-items: center; justify-content: center; }
+        .add-cart-btn:hover { background: rgba(232,149,111,0.35); }
+        .product-actions { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+        /* Platform account linking */
+        .platform-links { display: flex; flex-direction: column; gap: 10px; }
+        .platform-link-item { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 12px; }
+        .platform-link-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 0.8rem; font-weight: 600; }
+        .platform-link-icon { font-size: 1.1rem; }
+        .platform-link-item input { width: 100%; padding: 8px 10px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px; color: var(--text-primary); font-size: 0.82rem; outline: none; transition: all .25s; -webkit-appearance: none; appearance: none; }
+        .platform-link-item input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .platform-link-item input::placeholder { color: rgba(255,255,255,0.35); }
 
-        .reason-box {
-            margin-top: 16px;
-            padding: 14px 16px;
-            background: rgba(232, 149, 111, 0.12);
-            border: 1px solid rgba(232, 149, 111, 0.25);
-            border-radius: 14px;
-            font-size: 0.82rem;
-            line-height: 1.7;
-            color: rgba(255, 255, 255, 0.85);
-        }
+        /* Cart */
+        .cart-item { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+        .cart-item-info { flex: 1; min-width: 0; }
+        .cart-item-info .ciname { font-size: 0.82rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cart-item-info .cimeta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+        .cart-item-info .cimeta span { font-size: 0.7rem; color: var(--text-secondary); }
+        .cart-item-price { font-size: 0.9rem; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+        .cart-remove { width: 28px; height: 28px; border-radius: 8px; background: rgba(255,80,80,0.15); border: 1px solid rgba(255,80,80,0.3); color: var(--red); font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .cart-summary { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .cart-total { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+        .empty-hint { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 0.85rem; }
 
-        .reason-box .label {
-            font-weight: 600;
-            color: #f0a878;
-            margin-bottom: 4px;
-            display: block;
-        }
+        /* Loading */
+        .loading { display: none; text-align: center; padding: 30px 0; }
+        .loading.active { display: block; }
+        .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.12); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .loading p { font-size: 0.82rem; color: var(--text-secondary); }
+        .loading .step-text { font-size: 0.72rem; color: var(--accent); margin-top: 6px; }
+        .error-msg { display: none; padding: 10px 14px; background: rgba(255,80,80,0.12); border: 1px solid rgba(255,80,80,0.25); border-radius: 10px; font-size: 0.8rem; color: var(--red); text-align: center; }
+        .error-msg.active { display: block; animation: shake .4s ease; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
 
-        /* 搜索结果 */
-        .search-results {
-            margin-top: 16px;
-        }
+        /* Risk check */
+        .risk-warning { padding: 8px 12px; background: rgba(255,217,102,0.1); border: 1px solid rgba(255,217,102,0.25); border-radius: 10px; font-size: 0.76rem; color: var(--gold); margin-bottom: 6px; }
+        .risk-ok { padding: 8px 12px; background: rgba(126,216,168,0.1); border: 1px solid rgba(126,216,168,0.25); border-radius: 10px; font-size: 0.76rem; color: var(--green); }
 
-        .search-results summary {
-            cursor: pointer;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            padding: 8px 0;
-        }
+        /* Chat */
+        .chat-box { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        .chat-msg { padding: 8px 12px; border-radius: 12px; font-size: 0.82rem; max-width: 85%; line-height: 1.5; }
+        .chat-msg.user { background: rgba(232,149,111,0.2); border: 1px solid rgba(232,149,111,0.3); align-self: flex-end; }
+        .chat-msg.bot { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); align-self: flex-start; }
+        .chat-input-row { display: flex; gap: 8px; }
+        .chat-input-row input { flex: 1; padding: 9px 12px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; color: var(--text-primary); font-size: 0.85rem; outline: none; }
+        .chat-input-row input:focus { border-color: var(--accent); }
+        .chat-input-row button { padding: 0 16px; background: var(--accent); border: none; border-radius: 10px; color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
 
-        .search-result-item {
-            padding: 10px 12px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            margin-bottom: 8px;
-        }
-
-        .search-result-item a {
-            color: #7ec5ff;
-            text-decoration: none;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .search-result-item p {
-            font-size: 0.72rem;
-            color: var(--text-secondary);
-            margin-top: 4px;
-            line-height: 1.5;
-        }
-
-        /* ========== 加载动画 ========== */
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px 0;
-        }
-
-        .loading.active {
-            display: block;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255, 255, 255, 0.15);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 12px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading p {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        /* ========== 错误提示 ========== */
-        .error-msg {
-            display: none;
-            padding: 12px 16px;
-            background: rgba(255, 80, 80, 0.15);
-            border: 1px solid rgba(255, 80, 80, 0.3);
-            border-radius: 12px;
-            font-size: 0.82rem;
-            color: #ff8888;
-            text-align: center;
-        }
-
-        .error-msg.active {
-            display: block;
-            animation: shake 0.4s ease;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-6px); }
-            75% { transform: translateX(6px); }
-        }
-
-        /* ========== 空状态 ========== */
-        .empty-hint {
-            text-align: center;
-            padding: 20px;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-        }
-
-        .divider {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            margin: 20px 0;
-        }
-
-        /* ========== 移动端适配 ========== */
-        @media (max-width: 480px) {
-            body {
-                padding: 12px 10px;
-            }
-
-            .header h1 {
-                font-size: 1.35rem;
-                letter-spacing: 1px;
-            }
-
-            .header p {
-                font-size: 0.75rem;
-            }
-
-            .glass-card {
-                padding: 18px 14px;
-                border-radius: 16px;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
-
-            .form-group input,
-            .form-group select {
-                padding: 9px 12px;
-                font-size: 0.82rem;
-            }
-
-            .form-group label {
-                font-size: 0.7rem;
-            }
-
-            .section-title {
-                font-size: 0.95rem;
-            }
-
-            .outfit-card {
-                padding: 12px;
-                gap: 10px;
-            }
-
-            .outfit-icon {
-                width: 40px;
-                height: 40px;
-                font-size: 1.25rem;
-                border-radius: 12px;
-            }
-
-            .outfit-info .name {
-                font-size: 0.85rem;
-            }
-
-            .outfit-info .desc {
-                font-size: 0.72rem;
-            }
-
-            .btn {
-                padding: 11px 16px;
-                font-size: 0.88rem;
-            }
-
-            .reason-box {
-                font-size: 0.78rem;
-                padding: 12px 14px;
-            }
-        }
-
-        @media (max-width: 360px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* 滚动条样式 */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-        }
+        .divider { height: 1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent); margin: 14px 0; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+        @media (max-width: 480px) { body { padding: 12px 10px; } .header h1 { font-size: 1.15rem; } .glass-card { padding: 16px 12px; border-radius: 16px; } .form-grid { gap: 10px; } }
+        @media (max-width: 360px) { .form-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 顶部标题 -->
-        <div class="header">
-            <h1>AI 智能穿搭顾问</h1>
-            <p>根据你的画像和场景，生成专属穿搭方案</p>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h1>AI 智能穿搭顾问</h1>
+        <div class="header-right">
+            <span class="user-badge">👤 {{ username }}</span>
+            <a href="/logout" class="logout-btn">退出</a>
+        </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+        <button class="tab-btn {{ 'active' if active_tab != 'settings' else '' }}" onclick="switchTab('consult')">穿搭咨询</button>
+        <button class="tab-btn {{ 'active' if active_tab == 'settings' else '' }}" onclick="switchTab('settings')">个人设置</button>
+        <button class="tab-btn" onclick="switchTab('cart')">购物车</button>
+    </div>
+
+    <!-- Tab: Consult -->
+    <div class="tab-panel {{ 'active' if active_tab != 'settings' else '' }}" id="tab-consult">
+        <div class="glass-card">
+            <div class="section-title">📍 穿搭咨询</div>
+            <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:14px;line-height:1.5;">
+                只需填写前往地址和出席场合，系统将自动获取当地天气并基于您的个人资料生成穿搭方案。
+            </p>
+            <div class="form-grid">
+                <div class="form-group"><label>国家</label><input type="text" id="country" value="中国" placeholder="中国"></div>
+                <div class="form-group"><label>省/直辖市</label><input type="text" id="province" placeholder="如：江苏省"></div>
+                <div class="form-group"><label>市</label><input type="text" id="city" placeholder="如：南京市"></div>
+                <div class="form-group"><label>区/县</label><input type="text" id="county" placeholder="如：鼓楼区"></div>
+                <div class="form-group full"><label>出席场合</label>
+                    <select id="occasion">
+                        <option value="日常通勤">日常通勤</option>
+                        <option value="面试">面试</option>
+                        <option value="约会">约会</option>
+                        <option value="婚礼">婚礼</option>
+                        <option value="派对">派对</option>
+                        <option value="旅行">旅行</option>
+                        <option value="休闲">休闲</option>
+                        <option value="商务会议">商务会议</option>
+                        <option value="商务出差">商务出差</option>
+                        <option value="颁奖典礼">颁奖典礼</option>
+                        <option value="毕业典礼">毕业典礼</option>
+                        <option value="户外运动">户外运动</option>
+                        <option value="朋友聚餐">朋友聚餐</option>
+                        <option value="家庭聚会">家庭聚会</option>
+                        <option value="看展">看展/博物馆</option>
+                        <option value="音乐会">音乐会</option>
+                        <option value="拍照写真">拍照写真</option>
+                        <option value="新年节日">新年/节日</option>
+                        <option value="生日聚会">生日聚会</option>
+                        <option value="其他">其他</option>
+                    </select>
+                    <div class="other-input" id="otherOccasionInput">
+                        <input type="text" id="customOccasion" placeholder="请输入您的出席场合...">
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="consultBtn" onclick="doConsult()">生成穿搭方案 →</button>
         </div>
 
-        <!-- 用户画像表单 -->
-        <div class="glass-card" id="profileCard">
-            <div class="section-title">
-                <span class="icon">👤</span> 用户画像
-            </div>
-            <form action="/save" method="POST" id="profileForm">
+        <div class="error-msg" id="errorMsg"></div>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在生成你的专属穿搭方案...</p>
+            <p class="step-text" id="loadingStep"></p>
+        </div>
+        <div id="resultContainer"></div>
+    </div>
+
+    <!-- Tab: Settings -->
+    <div class="tab-panel {{ 'active' if active_tab == 'settings' else '' }}" id="tab-settings">
+        <div class="glass-card">
+            <div class="section-title">⚙️ 个人资料设置</div>
+            <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:14px;line-height:1.5;">
+                这些信息将作为穿搭推荐的重要参考依据。年龄根据出生日期自动计算。
+            </p>
+            <form id="settingsForm" action="/settings" method="POST">
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label>年龄</label>
-                        <input type="number" name="age" min="10" max="100" placeholder="25"
-                               value="{{ profile.age if profile else '' }}">
+                    <div class="form-group full"><label>出生日期（年 / 月 / 日）</label>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <select id="birthYear" onchange="updateBirthDays()" style="flex:1;">
+                                <option value="">年</option>
+                            </select>
+                            <select id="birthMonth" onchange="updateBirthDays()" style="flex:1;">
+                                <option value="">月</option>
+                                {% for m in range(1, 13) %}
+                                <option value="{{ m }}">{{ m }}月</option>
+                                {% endfor %}
+                            </select>
+                            <select id="birthDay" name="birthday" style="flex:1;" required>
+                                <option value="">日</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>身高 (cm)</label>
-                        <input type="number" name="height" min="100" max="250" step="0.1" placeholder="175"
-                               value="{{ profile.height if profile else '' }}">
+                    <div class="form-group"><label>性别</label>
+                        <select name="gender">
+                            <option value="">请选择</option>
+                            <option value="男" {{ 'selected' if profile and profile.gender == '男' else '' }}>男</option>
+                            <option value="女" {{ 'selected' if profile and profile.gender == '女' else '' }}>女</option>
+                        </select>
                     </div>
-                    <div class="form-group">
-                        <label>体重 (kg)</label>
-                        <input type="number" name="weight" min="30" max="200" step="0.1" placeholder="68"
-                               value="{{ profile.weight if profile else '' }}">
+                    <div class="form-group"><label>身高 (cm)</label><input type="number" name="height" min="100" max="250" step="0.1" placeholder="178" value="{{ profile.height if profile else '' }}"></div>
+                    <div class="form-group"><label>体重 (kg)</label><input type="number" name="weight" min="30" max="200" step="0.1" placeholder="68" value="{{ profile.weight if profile else '' }}"></div>
+                    <div class="form-group"><label>体型特征</label>
+                        <select name="body_shape">
+                            <option value="">请选择</option>
+                            {% for s in ['标准','宽肩','窄肩','腰低','长腿','梨形','苹果形','倒三角'] %}
+                            <option value="{{ s }}" {{ 'selected' if profile and profile.body_shape == s else '' }}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="form-group">
-                        <label>衣服尺码</label>
+                    <div class="form-group"><label>衣服尺码</label>
                         <select name="clothing_size">
                             <option value="">请选择</option>
-                            {% for s in ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] %}
+                            {% for s in ['XS','S','M','L','XL','XXL','XXXL'] %}
                             <option value="{{ s }}" {{ 'selected' if profile and profile.clothing_size == s else '' }}>{{ s }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>鞋子尺码</label>
-                        <input type="text" name="shoe_size" placeholder="42" 
-                               value="{{ profile.shoe_size if profile else '' }}">
+                    <div class="form-group"><label>鞋子尺码</label><input type="text" name="shoe_size" placeholder="42" value="{{ profile.shoe_size if profile else '' }}"></div>
+                    <div class="form-group full"><label>喜欢的颜色（可多选）</label>
+                        <div class="multi-tags" id="colorPrefTags"></div>
+                        <input type="hidden" name="color_preference" id="colorPrefInput" value="{{ profile.color_preference if profile else '' }}">
                     </div>
-                    <div class="form-group">
-                        <label>所在城市</label>
-                        <input type="text" name="city" placeholder="上海"
-                               value="{{ profile.city if profile else '' }}">
+                    <div class="form-group full"><label>幸运色（可多选）</label>
+                        <div class="multi-tags" id="luckyColorTags"></div>
+                        <input type="hidden" name="lucky_color" id="luckyColorInput" value="{{ profile.lucky_color if profile else '' }}">
                     </div>
-                    <div class="form-group">
-                        <label>颜色偏好</label>
-                        <div class="color-input-wrapper">
-                            <input type="color" id="colorPicker" value="#e8956f">
-                            <input type="text" name="color_preference" placeholder="如：深蓝、白色"
-                                   value="{{ profile.color_preference if profile else '' }}">
-                        </div>
+                    <div class="form-group full"><label>热衷穿衣风格（可多选）</label>
+                        <div class="multi-tags" id="dailyStyleTags"></div>
+                        <input type="hidden" name="daily_style" id="dailyStyleInput" value="{{ profile.daily_style if profile else '' }}">
                     </div>
-                    <div class="form-group">
-                        <label>幸运色</label>
-                        <div class="color-input-wrapper">
-                            <input type="color" id="luckyColorPicker" value="#d4a5c8">
-                            <input type="text" name="lucky_color" placeholder="如：金色、红色"
-                                   value="{{ profile.lucky_color if profile else '' }}">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>日常穿衣风格</label>
-                        <select name="daily_style">
-                            <option value="">请选择</option>
-                            {% for s in ['休闲', '商务', '运动', '复古', '街头', '简约', '优雅', '工装'] %}
-                            <option value="{{ s }}" {{ 'selected' if profile and profile.daily_style == s else '' }}>{{ s }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>偏好面料</label>
+                    <div class="form-group"><label>偏好面料</label>
                         <select name="preferred_fabric">
                             <option value="">请选择</option>
-                            {% for f in ['棉', '亚麻', '羊毛', '丝绸', '牛仔', '针织', '涤纶', '混纺', '羊绒'] %}
+                            {% for f in ['棉','亚麻','羊毛','丝绸','牛仔','针织','涤纶','混纺','羊绒'] %}
                             <option value="{{ f }}" {{ 'selected' if profile and profile.preferred_fabric == f else '' }}>{{ f }}</option>
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="form-group"><label>预算范围 (元)</label>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <input type="number" name="budget_min" min="0" placeholder="200" value="{{ profile.budget_min if profile else '' }}" style="flex:1">
+                            <span style="color:var(--text-secondary);font-size:0.8rem;">~</span>
+                            <input type="number" name="budget_max" min="0" placeholder="2000" value="{{ profile.budget_max if profile else '' }}" style="flex:1">
+                        </div>
+                    </div>
+                    <div class="form-group full"><label>购物平台账号绑定（可选，没有的可跳过）</label>
+                        <div class="platform-links">
+                            <div class="platform-link-item">
+                                <div class="platform-link-header"><span class="platform-link-icon">🛒</span>淘宝</div>
+                                <input type="text" name="taobao_account" placeholder="输入淘宝账号/昵称或店铺链接" value="{{ profile.taobao_account if profile else '' }}">
+                            </div>
+                            <div class="platform-link-item">
+                                <div class="platform-link-header"><span class="platform-link-icon">💰</span>拼多多</div>
+                                <input type="text" name="pinduoduo_account" placeholder="输入拼多多账号/昵称或店铺链接" value="{{ profile.pinduoduo_account if profile else '' }}">
+                            </div>
+                            <div class="platform-link-item">
+                                <div class="platform-link-header"><span class="platform-link-icon">🎵</span>抖音</div>
+                                <input type="text" name="douyin_account" placeholder="输入抖音账号/昵称或店铺链接" value="{{ profile.douyin_account if profile else '' }}">
+                            </div>
+                            <div class="platform-link-item">
+                                <div class="platform-link-header"><span class="platform-link-icon">👗</span>唯品会</div>
+                                <input type="text" name="vipshop_account" placeholder="输入唯品会账号/昵称或店铺链接" value="{{ profile.vipshop_account if profile else '' }}">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary">
-                    {% if profile %}更新画像{% else %}保存画像{% endif %}
-                </button>
+                <button type="submit" class="btn btn-primary">{{ '更新资料' if profile else '保存资料' }} →</button>
             </form>
         </div>
-
-        {% if profile %}
-        <!-- 情景输入区域 -->
-        <div class="glass-card scenario-section active" id="scenarioCard">
-            <div class="section-title">
-                <span class="icon">🎬</span> 情景输入
-            </div>
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label>出行日期 / 时间</label>
-                    <input type="datetime-local" name="date" id="scenarioDate">
-                </div>
-                <div class="form-group">
-                    <label>具体地点</label>
-                    <select name="location" id="scenarioLocation">
-                        <option value="">请选择</option>
-                        {% for loc in ['海边', '写字楼', '公园', '餐厅', '商场', '咖啡厅', '户外', '室内', '体育馆', '博物馆'] %}
-                        <option value="{{ loc }}">{{ loc }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>出席场合</label>
-                    <select name="occasion" id="scenarioOccasion">
-                        <option value="">请选择</option>
-                        {% for occ in ['婚礼', '商务会议', '约会', '日常', '聚会', '面试', '旅行', '派对'] %}
-                        <option value="{{ occ }}">{{ occ }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <button class="btn btn-primary" id="recommendBtn" onclick="getRecommendation()">
-                ✨ 生成搭配
-            </button>
-        </div>
-
-        <!-- 错误提示 -->
-        <div class="error-msg" id="errorMsg"></div>
-
-        <!-- 加载动画 -->
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>正在生成你的专属穿搭方案...</p>
-        </div>
-
-        <!-- 推荐结果区域 -->
-        <div class="glass-card result-section" id="resultCard">
-            <div class="result-header">
-                <div class="section-title" style="margin-bottom:0;">
-                    <span class="icon">👔</span> 推荐搭配
-                </div>
-                <div class="result-tags" id="resultTags"></div>
-            </div>
-            <div class="outfit-cards" id="outfitCards"></div>
-            <div class="reason-box" id="reasonBox" style="display:none;">
-                <span class="label">💡 推荐理由</span>
-                <p id="reasonText"></p>
-            </div>
-            <details class="search-results" id="searchResultsBox" style="display:none;">
-                <summary>📋 查看网络搜索参考</summary>
-                <div id="searchResults" style="margin-top:10px;"></div>
-            </details>
-        </div>
-        {% else %}
-        <div class="glass-card empty-hint">
-            <p>👆 请先完善用户画像，保存后即可生成穿搭推荐</p>
-        </div>
-        {% endif %}
     </div>
 
-    <script>
-        // 颜色选择器联动
-        const colorPicker = document.getElementById('colorPicker');
-        if (colorPicker) {
-            const colorText = colorPicker.nextElementSibling;
-            colorPicker.addEventListener('input', function(e) {
-                colorText.value = e.target.value;
+    <!-- Tab: Cart -->
+    <div class="tab-panel" id="tab-cart">
+        <div class="glass-card">
+            <div class="section-title">🛒 购物车</div>
+            <div class="cart-summary" id="cartSummary">
+                <span style="font-size:0.85rem;color:var(--text-secondary);">共 <strong id="cartCount">0</strong> 件商品</span>
+                <span class="cart-total" id="cartTotal">¥0</span>
+            </div>
+            <div id="cartItems"></div>
+            <div class="btn-row" style="display:flex;gap:10px;margin-top:14px;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="clearCart()">清空</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="checkout()">去结算</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="glass-card">
+        <div class="section-title">💬 对话助手</div>
+        <div class="chat-box" id="chatBox">
+            <div class="chat-msg bot">你好 {{ username }}！可以告诉我你的需求，比如"明天面试穿什么"。</div>
+        </div>
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="输入你的问题..." onkeypress="if(event.key==='Enter')sendChat()">
+            <button onclick="sendChat()">发送</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const icons = {'上装':'👕','下装':'👖','外套':'🧥','鞋履':'👟','配饰':'✨'};
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    const btns = document.querySelectorAll('.tab-btn');
+    if (tab === 'consult') btns[0].classList.add('active');
+    else if (tab === 'settings') btns[1].classList.add('active');
+    else if (tab === 'cart') { btns[2].classList.add('active'); loadCart(); }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Multi-select tags
+const colorOptions = [
+    {name:'黑色',hex:'#1a1a1a'},{name:'白色',hex:'#ffffff'},{name:'灰色',hex:'#888888'},
+    {name:'深蓝',hex:'#1e3a5f'},{name:'浅蓝',hex:'#87ceeb'},{name:'红色',hex:'#e74c3c'},
+    {name:'酒红',hex:'#8b0000'},{name:'粉色',hex:'#ffb6c1'},{name:'橙色',hex:'#ff8c00'},
+    {name:'黄色',hex:'#ffd700'},{name:'绿色',hex:'#4caf50'},{name:'卡其',hex:'#c3b091'},
+    {name:'棕色',hex:'#8b4513'},{name:'驼色',hex:'#c69c6d'},{name:'米色',hex:'#f5f5dc'},
+    {name:'紫色',hex:'#9b59b6'},{name:'银色',hex:'#c0c0c0'},{name:'金色',hex:'#ffd700'}
+];
+const styleOptions = ['休闲','商务','运动','复古','街头','简约','优雅','工装','学院','中性','极简','日系','韩系','国潮'];
+
+function initMultiTags(containerId, hiddenInputId, options, isColor) {
+    const container = document.getElementById(containerId);
+    const hiddenInput = document.getElementById(hiddenInputId);
+    if (!container || !hiddenInput) return;
+    let selected = hiddenInput.value ? hiddenInput.value.split(',').map(v => v.trim()).filter(v => v) : [];
+    options.forEach(opt => {
+        const name = isColor ? opt.name : opt;
+        const tag = document.createElement('span');
+        tag.className = 'multi-tag' + (selected.includes(name) ? ' selected' : '');
+        if (isColor) {
+            tag.innerHTML = '<span class="color-dot" style="background:' + opt.hex + '"></span>' + name;
+        } else {
+            tag.textContent = name;
+        }
+        tag.onclick = function() {
+            this.classList.toggle('selected');
+            const sel = [];
+            container.querySelectorAll('.multi-tag.selected').forEach(t => {
+                sel.push(t.textContent.trim());
             });
+            hiddenInput.value = sel.join(',');
+        };
+        container.appendChild(tag);
+    });
+}
+
+initMultiTags('colorPrefTags', 'colorPrefInput', colorOptions, true);
+initMultiTags('luckyColorTags', 'luckyColorInput', colorOptions, true);
+initMultiTags('dailyStyleTags', 'dailyStyleInput', styleOptions, false);
+
+// Occasion "其他" handler
+const occasionSelect = document.getElementById('occasion');
+const otherOccasionInput = document.getElementById('otherOccasionInput');
+if (occasionSelect && otherOccasionInput) {
+    occasionSelect.addEventListener('change', function() {
+        if (this.value === '其他') {
+            otherOccasionInput.classList.add('active');
+        } else {
+            otherOccasionInput.classList.remove('active');
+            const inp = otherOccasionInput.querySelector('input');
+            if (inp) inp.value = '';
         }
-        const luckyPicker = document.getElementById('luckyColorPicker');
-        if (luckyPicker) {
-            const luckyText = luckyPicker.nextElementSibling;
-            luckyPicker.addEventListener('input', function(e) {
-                luckyText.value = e.target.value;
+    });
+}
+
+// Birthday: year/month/day cascade selector
+(function() {
+    const yearSel = document.getElementById('birthYear');
+    const monthSel = document.getElementById('birthMonth');
+    const daySel = document.getElementById('birthDay');
+    if (!yearSel) return;
+
+    // Populate years (1920 - current year)
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= 1920; y--) {
+        const opt = document.createElement('option');
+        opt.value = y; opt.textContent = y + '年';
+        yearSel.appendChild(opt);
+    }
+
+    // Get days in a given year/month
+    function getDaysInMonth(year, month) {
+        if (!year || !month) return 31;
+        return new Date(year, month, 0).getDate();
+    }
+
+    // Expose for onchange handler
+    window.updateBirthDays = function() {
+        const y = parseInt(yearSel.value) || 0;
+        const m = parseInt(monthSel.value) || 0;
+        const days = getDaysInMonth(y, m);
+        const prevDay = daySel.value;
+        daySel.innerHTML = '<option value="">日</option>';
+        for (let d = 1; d <= days; d++) {
+            const opt = document.createElement('option');
+            opt.value = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+            opt.textContent = d + '日';
+            if (opt.value === prevDay) opt.selected = true;
+            daySel.appendChild(opt);
+        }
+    };
+
+    // Restore saved birthday from profile
+    const saved = '{{ profile.birthday if profile else "" }}';
+    if (saved) {
+        const parts = saved.split('-');
+        if (parts.length === 3) {
+            yearSel.value = parts[0];
+            monthSel.value = parseInt(parts[1]);
+            updateBirthDays();
+            const fullVal = saved;
+            for (let i = 0; i < daySel.options.length; i++) {
+                if (daySel.options[i].value === fullVal) {
+                    daySel.selectedIndex = i; break;
+                }
+            }
+        }
+    }
+})();
+
+// Consult
+async function doConsult() {
+    const country = document.getElementById('country').value.trim();
+    const province = document.getElementById('province').value.trim();
+    const city = document.getElementById('city').value.trim();
+    const county = document.getElementById('county').value.trim();
+    let occasion = document.getElementById('occasion').value;
+    if (occasion === '其他') {
+        const customOccasion = document.getElementById('customOccasion').value.trim();
+        if (!customOccasion) { showError('请输入具体的出席场合'); return; }
+        occasion = customOccasion;
+    }
+
+    if (!city && !province) { showError('请至少填写到市级地址'); return; }
+
+    const loading = document.getElementById('loading');
+    const resultContainer = document.getElementById('resultContainer');
+    const btn = document.getElementById('consultBtn');
+    const steps = ['获取当地实时天气...', '分析体型特征...', '生成穿搭方案...', '搜索多平台商品...', '进行智能比价...', '执行风险检查...'];
+    let stepIdx = 0;
+    loading.classList.add('active');
+    resultContainer.innerHTML = '';
+    btn.disabled = true;
+    const stepText = document.getElementById('loadingStep');
+    const stepInterval = setInterval(() => { stepText.textContent = steps[stepIdx % steps.length]; stepIdx++; }, 800);
+
+    try {
+        const resp = await fetch('/consult', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({country, province, city, county, occasion})
+        });
+        const data = await resp.json();
+        if (data.error) { showError(data.error); return; }
+        renderResult(data);
+    } catch(err) {
+        showError('请求失败: ' + err.message);
+    } finally {
+        loading.classList.remove('active');
+        btn.disabled = false;
+        clearInterval(stepInterval);
+    }
+}
+
+function renderResult(data) {
+    const container = document.getElementById('resultContainer');
+    const ps = data.profile_summary || {};
+    const weather = data.weather || {};
+    const outfit = data.outfit || {};
+    const products = data.products || {};
+    const risk = data.risk_check || {};
+
+    let html = '';
+
+    // Weather & profile summary
+    html += '<div class="glass-card"><div class="section-title">🌤️ 环境与用户分析</div>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">';
+    html += '<span class="tag tag-season">' + (outfit.season||'') + ' ' + (outfit.occasion||'') + '</span>';
+    html += '<span class="tag tag-weather">' + (ps.address||'') + ' ' + (weather.temp||20) + '°C ' + (weather.desc||'') + '</span>';
+    html += '<span class="tag tag-weather">体感' + (weather.feels_like||weather.temp||20) + '°C</span>';
+    html += '<span class="tag tag-weather">湿度' + (weather.humidity||50) + '%</span>';
+    html += '</div>';
+    html += '<div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.6;">';
+    if (ps.age) html += '<div>年龄: <strong style="color:var(--accent);">' + ps.age + '岁</strong> | 性别: <strong>' + (ps.gender||'') + '</strong></div>';
+    html += '<div>体型: <strong style="color:var(--accent);">' + (ps.body_type||'未知') + '</strong> (BMI: ' + (ps.bmi||'-') + ')</div>';
+    html += '<div style="margin-top:4px;">' + (ps.body_advice||'') + '</div>';
+    html += '<div style="margin-top:4px;color:var(--blue);">📍 ' + (weather.advice||'') + '</div>';
+    html += '</div></div>';
+
+    // Outfit items
+    html += '<div class="glass-card"><div class="section-title">👔 穿搭方案</div><div class="outfit-cards">';
+    (outfit.items||[]).forEach((item, i) => {
+        html += '<div class="outfit-card" style="opacity:0;transform:translateY(15px);transition:all .4s ease;">';
+        html += '<div class="outfit-icon">' + (icons[item.category]||'🧥') + '</div>';
+        html += '<div class="outfit-info"><div class="name">' + (item.name||'') + '</div>';
+        html += '<div class="meta"><span>' + (item.color||'') + '</span><span>' + (item.material||'') + '</span></div>';
+        html += '<div class="desc">' + (item.desc||'') + '</div></div></div>';
+    });
+    html += '</div>';
+    html += '<div class="reason-box"><span class="label">💡 推荐理由</span><p>' + (outfit.reason||'') + '</p></div></div>';
+
+    // Products
+    if (products.details && products.details.length > 0) {
+        html += '<div class="glass-card"><div class="section-title">🔍 多平台比价结果</div>';
+        html += '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:10px;">推荐单品总计: <strong style="color:var(--accent);font-size:1rem;">¥' + (products.total_price||0) + '</strong></div>';
+
+        products.details.forEach(group => {
+            const item = group.item;
+            const comp = group.comparison;
+            if (!comp || !comp.comparison) return;
+            html += '<div class="product-item-group"><h4>' + (icons[item.category]||'') + ' ' + (item.name||'') + '</h4><div class="product-cards">';
+
+            (comp.comparison||[]).slice(0,4).forEach(p => {
+                const isBest = comp.best && p.platform === comp.best.platform && p.product_name === comp.best.product_name;
+                html += '<div class="product-card ' + (isBest?'best':'') + '">';
+                html += '<div class="product-platform">' + (p.platform_icon||'') + '</div>';
+                html += '<div class="product-info">';
+                html += '<div class="pname"><a href="' + (p.product_url||'#') + '" target="_blank" rel="noopener">' + (p.product_name||'') + ' ↗</a></div>';
+                html += '<div class="pmeta">';
+                html += '<span class="pprice">¥' + (p.total_price||0) + '</span>';
+                if (p.original_price) html += '<span class="porig">¥' + p.original_price + '</span>';
+                html += '</div>';
+                html += '<div class="pmeta" style="margin-top:4px;">';
+                html += '<span class="pplatform-badge">' + (p.platform||'') + '</span>';
+                html += '<span class="pseller">' + (p.seller||'') + '</span>';
+                if (p.rating) html += '<span class="prating">' + p.rating + '⭐</span>';
+                html += '<span class="pshipping">' + (p.shipping_fee===0?'包邮':'运费¥'+p.shipping_fee) + '</span>';
+                html += '</div>';
+                html += '<div style="font-size:0.68rem;color:var(--text-secondary);margin-top:2px;">尺码: ' + ((p.sizes_available||[]).join(', ')||'均码') + '</div>';
+                html += '</div>';
+                if (isBest) html += '<span class="best-badge">最优</span>';
+                html += '<div class="product-actions"><a href="' + (p.product_url||'#') + '" target="_blank" rel="noopener" class="add-cart-btn">去购买</a><button class="add-cart-btn" onclick=\'addBestToCart(' + JSON.stringify(p).replace(/'/g,"&#39;") + ')\'>加购</button></div>';
+                html += '</div>';
             });
+            html += '</div></div>';
+        });
+
+        if (products.best_picks && products.best_picks.length > 0) {
+            html += '<div class="divider"></div><button class="btn btn-primary" onclick=\'addAllBestToCart(' + JSON.stringify(products.best_picks).replace(/'/g,"&#39;") + ')\'>全部最优加入购物车 →</button>';
         }
+        html += '</div>';
+    }
 
-        // 设置默认日期时间为当前
-        const dateInput = document.getElementById('scenarioDate');
-        if (dateInput) {
-            const now = new Date();
-            const offset = now.getTimezoneOffset() * 60000;
-            const localISO = new Date(now - offset).toISOString().slice(0, 16);
-            dateInput.value = localISO;
-        }
+    // Risk
+    html += '<div class="glass-card"><div class="section-title">🛡️ 风险检查</div><div>';
+    if (risk.warnings && risk.warnings.length > 0) {
+        risk.warnings.forEach(w => { html += '<div class="risk-warning">⚠️ ' + w + '</div>'; });
+    } else {
+        html += '<div class="risk-ok">✅ 所有商品通过合规检查</div>';
+    }
+    if (risk.recommendations) risk.recommendations.forEach(r => { html += '<div class="risk-warning">💡 ' + r + '</div>'; });
+    html += '</div></div>';
 
-        // 获取推荐搭配
-        function getRecommendation() {
-            const date = document.getElementById('scenarioDate')?.value || '';
-            const location = document.getElementById('scenarioLocation')?.value || '';
-            const occasion = document.getElementById('scenarioOccasion')?.value || '';
+    container.innerHTML = html;
+    const cards = container.querySelectorAll('.outfit-card');
+    cards.forEach((card, i) => { setTimeout(() => { card.style.opacity='1'; card.style.transform='translateY(0)'; }, 100+i*150); });
+}
 
-            // 验证输入
-            const errorMsg = document.getElementById('errorMsg');
-            if (!location || !occasion) {
-                showError('请选择地点和场合');
-                return;
-            }
+// Cart
+async function addBestToCart(product) {
+    try {
+        const resp = await fetch('/cart/add_single', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(product)});
+        const data = await resp.json();
+        if (data.success) { alert(data.message); loadCart(); }
+    } catch(e) { alert('加入购物车失败'); }
+}
+async function addAllBestToCart(products) {
+    try {
+        const resp = await fetch('/cart/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:products})});
+        const data = await resp.json();
+        if (data.success) { alert(data.message); switchTab('cart'); }
+    } catch(e) { alert('加入购物车失败'); }
+}
+async function loadCart() {
+    try {
+        const resp = await fetch('/cart');
+        const cart = await resp.json();
+        document.getElementById('cartCount').textContent = cart.count;
+        document.getElementById('cartTotal').textContent = '¥' + cart.total_price;
+        const box = document.getElementById('cartItems');
+        box.innerHTML = '';
+        if (cart.items.length === 0) { box.innerHTML = '<div class="empty-hint">购物车空空如也，快去选购吧~</div>'; return; }
+        cart.items.forEach(item => {
+            const d = document.createElement('div'); d.className = 'cart-item';
+            d.innerHTML = '<div class="cart-item-info"><div class="ciname">' + item.product_name + '</div><div class="cimeta"><span>' + item.platform + '</span><span>¥' + item.total_price + '</span><span>' + (item.seller||'') + '</span></div></div><div class="cart-item-price">¥' + item.total_price + '</div><button class="cart-remove" onclick="removeCartItem(' + item.id + ')">&times;</button>';
+            box.appendChild(d);
+        });
+    } catch(e) { console.error(e); }
+}
+async function removeCartItem(id) {
+    try { await fetch('/cart/remove/'+id, {method:'POST'}); loadCart(); } catch(e) { alert('移除失败'); }
+}
+async function clearCart() {
+    if (!confirm('确认清空购物车？')) return;
+    try { await fetch('/cart/clear', {method:'POST'}); loadCart(); } catch(e) { alert('清空失败'); }
+}
+async function checkout() {
+    try {
+        const resp = await fetch('/cart/checkout');
+        const data = await resp.json();
+        if (data.can_checkout) alert(data.message + '\n\n' + (data.warning||''));
+        else alert(data.message);
+    } catch(e) { alert('结算失败'); }
+}
 
-            errorMsg.classList.remove('active');
-            
-            // 显示加载
-            const loading = document.getElementById('loading');
-            const resultCard = document.getElementById('resultCard');
-            const recommendBtn = document.getElementById('recommendBtn');
-            
-            loading.classList.add('active');
-            resultCard.classList.remove('active');
-            recommendBtn.disabled = true;
-            recommendBtn.textContent = '生成中...';
+// Chat
+async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    const chatBox = document.getElementById('chatBox');
+    const u = document.createElement('div'); u.className='chat-msg user'; u.textContent=msg;
+    chatBox.appendChild(u); chatBox.scrollTop = chatBox.scrollHeight;
+    try {
+        const resp = await fetch('/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})});
+        const data = await resp.json();
+        const b = document.createElement('div'); b.className='chat-msg bot'; b.textContent=data.reply;
+        chatBox.appendChild(b); chatBox.scrollTop = chatBox.scrollHeight;
+        if (data.data && data.data.outfit) { renderResult(data.data); switchTab('consult'); }
+    } catch(e) {
+        const b = document.createElement('div'); b.className='chat-msg bot'; b.textContent='出了点问题，请稍后再试。';
+        chatBox.appendChild(b);
+    }
+}
 
-            // 构建请求 URL
-            const params = new URLSearchParams({
-                date: date,
-                location: location,
-                occasion: occasion
-            });
+function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg; el.classList.add('active');
+    setTimeout(() => el.classList.remove('active'), 3000);
+}
 
-            // Fetch 请求后端
-            fetch(`/recommend?${params.toString()}`)
-                .then(res => {
-                    if (!res.ok) throw new Error('服务器错误: ' + res.status);
-                    return res.json();
-                })
-                .then(data => {
-                    if (data.error) {
-                        showError(data.error);
-                        return;
-                    }
-                    renderResult(data);
-                })
-                .catch(err => {
-                    console.error('Fetch error:', err);
-                    showError('请求失败，请检查网络或重试');
-                })
-                .finally(() => {
-                    loading.classList.remove('active');
-                    recommendBtn.disabled = false;
-                    recommendBtn.textContent = '✨ 生成搭配';
-                });
-        }
-
-        // 渲染推荐结果
-        function renderResult(data) {
-            const resultCard = document.getElementById('resultCard');
-            const tagsBox = document.getElementById('resultTags');
-            const cardsBox = document.getElementById('outfitCards');
-            const reasonBox = document.getElementById('reasonBox');
-            const reasonText = document.getElementById('reasonText');
-            const searchBox = document.getElementById('searchResultsBox');
-            const searchResults = document.getElementById('searchResults');
-
-            // 渲染标签
-            const modeLabel = data.mode === 'real' ? '🌐 真实搜索' : '🎯 模拟推荐';
-            const modeClass = data.mode === 'real' ? 'tag-mode real' : 'tag-mode';
-            tagsBox.innerHTML = `
-                <span class="tag tag-season">${data.season || '秋季'}</span>
-                <span class="tag ${modeClass}">${modeLabel}</span>
-            `;
-
-            // 渲染搭配卡片
-            const icons = { '上装': '👕', '下装': '👖', '鞋子': '👟' };
-            cardsBox.innerHTML = '';
-            
-            if (data.outfits && data.outfits.length > 0) {
-                data.outfits.forEach(item => {
-                    const icon = icons[item.category] || '🧥';
-                    const card = document.createElement('div');
-                    card.className = 'outfit-card';
-                    card.innerHTML = `
-                        <div class="outfit-icon">${icon}</div>
-                        <div class="outfit-info">
-                            <div class="name">${item.name || '推荐单品'}</div>
-                            <div class="meta">
-                                <span>${item.color || ''}</span>
-                                <span>${item.material || ''}</span>
-                            </div>
-                            <div class="desc">${item.description || ''}</div>
-                        </div>
-                    `;
-                    card.style.opacity = '0';
-                    card.style.transform = 'translateY(15px)';
-                    card.style.transition = 'all 0.4s ease';
-                    cardsBox.appendChild(card);
-                    
-                    // 依次动画进入
-                    setTimeout(() => {
-                        card.style.opacity = '1';
-                        card.style.transform = 'translateY(0)';
-                    }, 100 + cardsBox.children.length * 150);
-                });
-            }
-
-            // 渲染推荐理由
-            if (data.reason) {
-                reasonText.textContent = data.reason;
-                reasonBox.style.display = 'block';
-            } else {
-                reasonBox.style.display = 'none';
-            }
-
-            // 渲染搜索结果（真实模式）
-            if (data.search_results && data.search_results.length > 0) {
-                searchResults.innerHTML = '';
-                data.search_results.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'search-result-item';
-                    div.innerHTML = `
-                        <a href="${item.link}" target="_blank" rel="noopener">${item.title || '搜索结果'}</a>
-                        <p>${item.snippet || ''}</p>
-                    `;
-                    searchResults.appendChild(div);
-                });
-                searchBox.style.display = 'block';
-            } else {
-                searchBox.style.display = 'none';
-            }
-
-            // 显示结果区域
-            resultCard.classList.add('active');
-            resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        // 显示错误
-        function showError(msg) {
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.textContent = msg;
-            errorMsg.classList.add('active');
-            setTimeout(() => errorMsg.classList.remove('active'), 3000);
-        }
-    </script>
+// Init: check if profile is set
+{% if not profile %}
+setTimeout(() => { switchTab('settings'); }, 300);
+{% endif %}
+</script>
 </body>
 </html>

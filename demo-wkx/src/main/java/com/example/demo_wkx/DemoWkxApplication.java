@@ -1,6 +1,7 @@
 package com.example.demo_wkx;
 
 import com.example.demo_wkx.rag.RagService;
+import com.example.demo_wkx.service.BotStateService;
 import com.example.demo_wkx.service.LlmService;
 import com.example.demo_wkx.skill.SkillService;
 import com.github.wechat.ilink.sdk.ILinkClient;
@@ -37,6 +38,9 @@ public class DemoWkxApplication implements CommandLineRunner {
 	@Autowired
 	private RagService ragService;
 
+	@Autowired
+	private BotStateService botStateService;
+
 	private ILinkClient client;
 
 	private final java.util.Set<String> voiceModeUsers = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
@@ -61,6 +65,8 @@ public class DemoWkxApplication implements CommandLineRunner {
 					@Override
 					public void onLoginSuccess(LoginContext context) {
 						System.out.println("\n✅ 登录成功！botId = " + context.getBotId());
+						botStateService.setLoggedIn(true);
+						botStateService.setBotId(context.getBotId());
 						System.out.println("📡 等待接收消息...\n");
 					}
 
@@ -366,10 +372,17 @@ public class DemoWkxApplication implements CommandLineRunner {
 			QRCodeWriter qrCodeWriter = new QRCodeWriter();
 			BitMatrix bitMatrix = qrCodeWriter.encode(content, BarcodeFormat.QR_CODE, 400, 400);
 
+			java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+			MatrixToImageWriter.writeToStream(bitMatrix, "PNG", baos);
+			byte[] qrBytes = baos.toByteArray();
+
+			botStateService.setQrCodeBytes(qrBytes);
+
 			File qrFile = new File(System.getProperty("java.io.tmpdir"), "wechat_ilink_qr.png");
 			MatrixToImageWriter.writeToPath(bitMatrix, "PNG", qrFile.toPath());
 
 			System.out.println("二维码已保存: " + qrFile.getAbsolutePath());
+			System.out.println("REST 接口可用: http://localhost:8080/api/bot/qr.png");
 
 			if (Desktop.isDesktopSupported()) {
 				Desktop.getDesktop().open(qrFile);

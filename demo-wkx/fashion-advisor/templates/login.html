@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 智能穿搭顾问 - 登录</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --glass-bg: rgba(255,255,255,0.12);
+            --glass-border: rgba(255,255,255,0.25);
+            --glass-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            --text-primary: #fff;
+            --text-secondary: rgba(255,255,255,0.6);
+            --accent: #e8956f;
+            --accent-light: rgba(232,149,111,0.3);
+            --input-bg: rgba(255,255,255,0.08);
+            --input-border: rgba(255,255,255,0.2);
+            --red: #ff8888;
+        }
+        body {
+            font-family: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            color: var(--text-primary);
+            background: linear-gradient(135deg,#1a1a2e 0%,#16213e 30%,#3a1c4e 60%,#2d1b4e 100%);
+            background-size: 200% 200%; animation: gradientShift 15s ease infinite;
+            padding: 20px;
+        }
+        @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        .login-box {
+            width: 100%; max-width: 400px;
+            background: var(--glass-bg); backdrop-filter: blur(20px) saturate(140%);
+            -webkit-backdrop-filter: blur(20px) saturate(140%);
+            border: 1px solid var(--glass-border); border-radius: 24px;
+            box-shadow: var(--glass-shadow); padding: 36px 28px;
+            animation: fadeInUp .6s ease;
+        }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        .logo { text-align: center; margin-bottom: 28px; }
+        .logo h1 {
+            font-size: 1.6rem; font-weight: 700; letter-spacing: 2px;
+            background: linear-gradient(135deg,#e8956f,#f0a878,#d4a5c8);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .logo p { font-size: 0.78rem; color: var(--text-secondary); margin-top: 6px; }
+        .tab-row { display: flex; gap: 0; margin-bottom: 24px; background: rgba(255,255,255,0.06); border-radius: 12px; padding: 4px; }
+        .tab-btn {
+            flex: 1; padding: 10px; border: none; background: transparent;
+            color: var(--text-secondary); font-size: 0.88rem; font-weight: 600;
+            border-radius: 10px; cursor: pointer; transition: all .3s;
+        }
+        .tab-btn.active { background: linear-gradient(135deg,#e8956f,#d4795f); color: #fff; box-shadow: 0 2px 12px rgba(232,149,111,0.3); }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px; }
+        .form-group input {
+            width: 100%; padding: 12px 14px; background: var(--input-bg);
+            border: 1px solid var(--input-border); border-radius: 12px;
+            color: var(--text-primary); font-size: 0.88rem; outline: none;
+            transition: all .25s;
+        }
+        .form-group input::placeholder { color: rgba(255,255,255,0.3); }
+        .form-group input:focus { border-color: var(--accent); background: rgba(255,255,255,0.12); box-shadow: 0 0 0 3px var(--accent-light); }
+        .btn {
+            width: 100%; padding: 13px; border: none; border-radius: 12px;
+            font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: all .3s;
+            letter-spacing: 1px; margin-top: 6px;
+        }
+        .btn-primary { background: linear-gradient(135deg,#e8956f,#d4795f); color: #fff; box-shadow: 0 4px 18px rgba(232,149,111,0.35); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(232,149,111,0.5); }
+        .error-msg { color: var(--red); font-size: 0.8rem; text-align: center; margin-bottom: 14px; padding: 8px 12px; background: rgba(255,80,80,0.1); border-radius: 10px; border: 1px solid rgba(255,80,80,0.2); display: none; }
+        .error-msg.show { display: block; animation: shake .4s ease; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+        .features { margin-top: 24px; display: flex; justify-content: center; gap: 20px; }
+        .feature { text-align: center; }
+        .feature .icon { font-size: 1.4rem; }
+        .feature .text { font-size: 0.68rem; color: var(--text-secondary); margin-top: 4px; }
+        @media (max-width: 380px) { .login-box { padding: 28px 20px; } .logo h1 { font-size: 1.4rem; } }
+    </style>
+</head>
+<body>
+<div class="login-box">
+    <div class="logo">
+        <h1>AI 智能穿搭顾问</h1>
+        <p>登录后享受个性化穿搭推荐服务</p>
+    </div>
+
+    <div class="error-msg" id="errorMsg">{{ error if error else '' }}</div>
+
+    <div class="tab-row">
+        <button class="tab-btn {{ 'active' if mode != 'register' else '' }}" onclick="switchTab('login')">登录</button>
+        <button class="tab-btn {{ 'active' if mode == 'register' else '' }}" onclick="switchTab('register')">注册</button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="loginForm" action="/login" method="POST" style="display:{{ 'none' if mode == 'register' else 'block' }}">
+        <div class="form-group">
+            <label>用户名</label>
+            <input type="text" name="username" placeholder="请输入用户名" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+            <label>密码</label>
+            <input type="password" name="password" placeholder="请输入密码" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">登 录</button>
+    </form>
+
+    <!-- Register Form -->
+    <form id="registerForm" action="/register" method="POST" style="display:{{ 'block' if mode == 'register' else 'none' }}">
+        <div class="form-group">
+            <label>用户名</label>
+            <input type="text" name="username" placeholder="设置用户名" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+            <label>密码（字母+数字混合，至少6位）</label>
+            <input type="password" name="password" placeholder="必须包含字母和数字" autocomplete="new-password" required>
+        </div>
+        <div class="form-group">
+            <label>确认密码</label>
+            <input type="password" name="password2" placeholder="再次输入密码" autocomplete="new-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">注 册</button>
+    </form>
+
+    <div class="features">
+        <div class="feature"><div class="icon">👤</div><div class="text">个人画像</div></div>
+        <div class="feature"><div class="icon">🌤️</div><div class="text">实时天气</div></div>
+        <div class="feature"><div class="icon">🔍</div><div class="text">多平台比价</div></div>
+        <div class="feature"><div class="icon">🛒</div><div class="text">购物车</div></div>
+    </div>
+</div>
+
+<script>
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+    if (tab === 'login') document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    else document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    document.getElementById('errorMsg').classList.remove('show');
+}
+
+// Show error if present
+if (document.getElementById('errorMsg').textContent.trim()) {
+    document.getElementById('errorMsg').classList.add('show');
+}
+
+// Register password validation: must contain both letters and numbers
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const pwd = this.password.value;
+    const pwd2 = this.password2.value;
+    const err = document.getElementById('errorMsg');
+    if (pwd.length < 6) {
+        e.preventDefault();
+        err.textContent = '密码至少6位';
+        err.classList.add('show');
+        return;
+    }
+    const hasLetter = /[a-zA-Z]/.test(pwd);
+    const hasDigit = /\d/.test(pwd);
+    if (!hasLetter || !hasDigit) {
+        e.preventDefault();
+        err.textContent = '密码必须同时包含字母和数字';
+        err.classList.add('show');
+        return;
+    }
+    if (pwd !== pwd2) {
+        e.preventDefault();
+        err.textContent = '两次密码不一致';
+        err.classList.add('show');
+    }
+});
+</script>
+</body>
+</html>

@@ -2,6 +2,13 @@ package com.example.demo_wkx.skill;
 
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,8 +21,10 @@ import java.util.Random;
  * - Function Calling: LLM 自主决定是否调用工具，灵活性高但依赖 LLM 推理能力
  * - Skill: 基于关键词匹配，命中后直接执行，无需 LLM 参与，响应快、确定性高
  *
- * 本 Skill 实现：星座运势查询
- * 关键词: "运势"、"今日运势"、"星座运势"、"运气"、"抽签"、"占卜"
+ * 已实现 Skill：
+ * 1. 星座运势查询 — 关键词: "运势"、"今日运势"、"星座运势"、"运气"、"抽签"、"占卜"
+ * 2. 穿搭顾问 — 关键词: "穿搭"、"搭配"、"搭配建议"、"衣服搭配"、"穿什么"、"穿衣"
+ *    调用 Flask 穿搭顾问服务 (http://localhost:5000/api/bot/message) 获取穿搭方案
  */
 @Service
 public class SkillService {
@@ -23,6 +32,12 @@ public class SkillService {
     public record Skill(String name, String[] keywords) {}
 
     private final List<Skill> skills = new ArrayList<>();
+
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+
+    private static final String FASHION_API_URL = "http://localhost:5000/api/bot/message";
 
     private static final String[] CONSTELLATIONS = {
         "白羊座", "金牛座", "双子座", "巨蟹座", "狮子座", "处女座",
@@ -56,6 +71,8 @@ public class SkillService {
     public SkillService() {
         skills.add(new Skill("星座运势",
             new String[]{"运势", "今日运势", "星座运势", "运气", "抽签", "占卜"}));
+        skills.add(new Skill("穿搭顾问",
+            new String[]{"穿搭", "搭配", "搭配建议", "衣服搭配", "穿什么", "穿衣", " outfits", "服装推荐"}));
     }
 
     /**
@@ -70,11 +87,65 @@ public class SkillService {
             for (String keyword : skill.keywords()) {
                 if (text.contains(keyword)) {
                     System.out.println("🎯 [Skill] 命中 \"" + skill.name() + "\" (关键词: " + keyword + ")");
-                    return executeZodiacFortune(text);
+                    return switch (skill.name()) {
+                        case "星座运势" -> executeZodiacFortune(text);
+                        case "穿搭顾问" -> executeFashionAdvisor(text);
+                        default -> null;
+                    };
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * 执行穿搭顾问查询
+     * 调用 Flask 穿搭顾问服务 (http://localhost:5000/api/bot/message)
+     * 将用户的穿搭需求转发给 Flask 后端，返回穿搭方案文本
+     */
+    private String executeFashionAdvisor(String message) {
+        try {
+            String json = "{\"wx_user_id\":\"java_clawbot\",\"text\":\"" +
+                    message.replace("\"", "\\\"").replace("\n", "\\n") + "\"}";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(FASHION_API_URL))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .timeout(Duration.ofSeconds(30))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                String body = response.body();
+                int replyIdx = body.indexOf("\"reply\":\"");
+                if (replyIdx >= 0) {
+                    int start = replyIdx + 9;
+                    int end = start;
+                    boolean escape = false;
+                    for (int i = start; i < body.length(); i++) {
+                        char c = body.charAt(i);
+                        if (escape) { escape = false; continue; }
+                        if (c == '\\') { escape = true; continue; }
+                        if (c == '"') { end = i; break; }
+                    }
+                    String reply = body.substring(start, end)
+                            .replace("\\n", "\n")
+                            .replace("\\\"", "\"")
+                            .replace("\\\\", "\\");
+                    return "[TEXT]" + reply;
+                }
+                return "[TEXT]穿搭顾问服务返回格式异常，请稍后再试。";
+            } else {
+                System.err.println("❌ [穿搭顾问] HTTP " + response.statusCode());
+                return "[TEXT]穿搭顾问服务暂时不可用 (HTTP " + response.statusCode() + ")，请确认 Flask 服务已启动。";
+            }
+        } catch (Exception e) {
+            System.err.println("❌ [穿搭顾问] 调用失败: " + e.getMessage());
+            return "[TEXT]穿搭顾问服务连接失败，请确认 Flask 服务 (localhost:5000) 已启动。";
+        }
     }
 
     /**

@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>穿搭顾问机器人控制台</title>
+    <style>
+        :root {
+            --bg-top: #f7f9fb;
+            --bg-bottom: #e9eef4;
+            --card: #ffffff;
+            --ink: #101828;
+            --muted: #667085;
+            --line: #d7dde6;
+            --brand: #0f766e;
+            --brand-soft: #e6f4f2;
+            --ok: #16a34a;
+            --ok-soft: #ecfdf3;
+            --warn: #d97706;
+            --warn-soft: #fffbeb;
+            --danger: #dc2626;
+            --danger-soft: #fef2f2;
+            --shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; color: var(--ink);
+            font-family: "Segoe UI", system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+            background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+        }
+        .topbar {
+            max-width: 1120px; margin: 0 auto; padding: 22px 20px 6px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        }
+        .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .brand-mark {
+            width: 42px; height: 42px; flex: 0 0 42px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; background: var(--brand); color: #fff;
+            font-size: 20px; font-weight: 600;
+        }
+        .brand h1 { margin: 0; font-size: 20px; line-height: 1.3; }
+        .brand p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+        .pill {
+            flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px;
+            height: 34px; padding: 0 14px; border: 1px solid var(--line);
+            border-radius: 999px; background: var(--card); font-size: 13px; font-weight: 600;
+        }
+        .pill.wait { color: var(--warn); }
+        .pill.ok { color: var(--ok); }
+        .pill.err { color: var(--danger); }
+        .pill-dot { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: currentColor; }
+        .layout {
+            max-width: 1120px; margin: 0 auto; padding: 18px 20px 40px;
+            display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start;
+        }
+        .section { padding: 4px 0 20px; }
+        .section + .section { border-top: 1px solid var(--line); padding-top: 22px; }
+        .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .section-head h2 { margin: 0; font-size: 16px; line-height: 1.4; }
+        .section-meta { font-size: 12px; color: var(--muted); }
+        .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .metric {
+            min-height: 86px; padding: 14px 16px; border: 1px solid var(--line);
+            border-radius: 8px; background: var(--card); box-shadow: var(--shadow);
+        }
+        .metric-label { display: block; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
+        .metric-value { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; line-height: 1.4; word-break: break-all; }
+        .metric-value.mono { font-family: Consolas, ui-monospace, monospace; font-size: 13px; font-weight: 500; }
+        .dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: var(--muted); }
+        .dot.ok { background: var(--ok); }
+        .dot.wait { background: var(--warn); }
+        .dot.err { background: var(--danger); }
+        .tool-row { display: flex; align-items: flex-start; gap: 14px; margin-top: 14px; }
+        .tool-label { flex: 0 0 auto; padding-top: 7px; font-size: 13px; color: var(--muted); }
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
+            border: 1px solid #b7dfd9; border-radius: 999px;
+            background: var(--brand-soft); color: #0b5d57; font-size: 13px;
+        }
+        .chip.empty { border-color: var(--line); background: #f2f4f7; color: var(--muted); }
+        .cap-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .cap-card {
+            min-height: 132px; padding: 16px; border: 1px solid var(--line);
+            border-radius: 8px; background: var(--card); box-shadow: var(--shadow);
+        }
+        .cap-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .cap-icon {
+            width: 36px; height: 36px; flex: 0 0 36px; display: flex;
+            align-items: center; justify-content: center; border-radius: 8px;
+            background: var(--brand-soft); color: var(--brand);
+        }
+        .cap-icon svg { width: 20px; height: 20px; }
+        .cap-status {
+            flex: 0 0 auto; display: inline-flex; align-items: center; height: 24px;
+            padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 600;
+        }
+        .cap-status.on { background: var(--ok-soft); color: var(--ok); }
+        .cap-status.off { background: var(--warn-soft); color: var(--warn); }
+        .cap-card h3 { margin: 0 0 6px; font-size: 15px; }
+        .cap-card p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
+        .qr-panel {
+            position: sticky; top: 20px; padding: 20px; border: 1px solid var(--line);
+            border-radius: 8px; background: var(--card); box-shadow: var(--shadow);
+        }
+        .qr-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .qr-top h2 { margin: 0; font-size: 17px; }
+        .badge {
+            flex: 0 0 auto; display: inline-flex; align-items: center; height: 26px;
+            padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+            background: var(--warn-soft); color: var(--warn);
+        }
+        .badge.ok { background: var(--ok-soft); color: var(--ok); }
+        .badge.err { background: var(--danger-soft); color: var(--danger); }
+        .qr-wrap {
+            width: min(100%, 300px); aspect-ratio: 1 / 1; margin: 16px auto 12px;
+            padding: 12px; display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--line); border-radius: 8px; background: #fff;
+        }
+        #qr { width: 100%; height: 100%; display: block; object-fit: contain; }
+        .qr-hint { margin: 0; text-align: center; font-size: 13px; color: var(--muted); }
+        .refresh-btn {
+            width: 100%; height: 40px; margin-top: 14px; display: inline-flex;
+            align-items: center; justify-content: center; gap: 8px;
+            border: 1px solid var(--line); border-radius: 8px;
+            background: #f8fafc; color: var(--ink); font-size: 14px; cursor: pointer;
+        }
+        .refresh-btn:hover { background: #eef2f6; }
+        .refresh-btn svg { width: 16px; height: 16px; }
+        .scan-btn {
+            width: 100%; height: 40px; margin-top: 10px; display: inline-flex;
+            align-items: center; justify-content: center; gap: 8px;
+            border: 1px solid var(--brand); border-radius: 8px;
+            background: var(--brand); color: #fff; font-size: 14px; cursor: pointer; font-weight: 600;
+        }
+        .scan-btn:hover { background: #0b5d57; }
+        .danger-btn { border-color: #fecaca; background: var(--danger-soft); color: var(--danger); }
+        .danger-btn:hover { background: #fee2e2; }
+        .danger-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .online-state { padding: 10px 0 2px; text-align: center; }
+        .online-icon {
+            width: 64px; height: 64px; margin: 8px auto 14px; display: flex;
+            align-items: center; justify-content: center; border-radius: 50%;
+            background: var(--ok-soft); color: var(--ok);
+        }
+        .online-icon svg { width: 34px; height: 34px; }
+        .online-state h3 { margin: 0 0 14px; font-size: 20px; }
+        .online-id {
+            margin: 0 auto; max-width: 280px; padding: 9px 12px; border: 1px solid var(--line);
+            border-radius: 6px; background: #f8fafc; font-family: Consolas, ui-monospace, monospace;
+            font-size: 13px; color: var(--muted); word-break: break-all;
+        }
+        .steps { display: grid; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+        .step { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+        .step i {
+            width: 22px; height: 22px; flex: 0 0 22px; display: flex;
+            align-items: center; justify-content: center; border-radius: 50%;
+            background: #eef2f6; color: var(--muted); font-style: normal; font-size: 12px;
+        }
+        .step.active { color: var(--ink); font-weight: 600; }
+        .step.active i { background: var(--brand); color: #fff; }
+        .step.done { color: var(--ok); }
+        .step.done i { background: var(--ok); color: #fff; }
+        .error-box {
+            margin-top: 14px; padding: 10px 12px; border: 1px solid #fecaca;
+            border-radius: 8px; background: var(--danger-soft); color: var(--danger);
+            font-size: 13px; line-height: 1.5; word-break: break-word;
+        }
+        .chat-test {
+            margin-top: 20px; padding: 16px; border: 1px solid var(--line);
+            border-radius: 8px; background: var(--card); box-shadow: var(--shadow);
+        }
+        .chat-test h3 { margin: 0 0 12px; font-size: 15px; }
+        .chat-msgs {
+            max-height: 200px; overflow-y: auto; padding: 8px; border: 1px solid var(--line);
+            border-radius: 6px; background: #f8fafc; font-size: 13px; line-height: 1.6; margin-bottom: 10px;
+        }
+        .chat-msgs .msg-user { color: var(--brand); font-weight: 600; }
+        .chat-msgs .msg-bot { color: var(--ink); white-space: pre-wrap; }
+        .chat-input-row { display: flex; gap: 8px; }
+        .chat-input-row input {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px;
+            font-size: 14px; outline: none;
+        }
+        .chat-input-row input:focus { border-color: var(--brand); }
+        .chat-input-row button {
+            padding: 8px 16px; border: none; border-radius: 6px;
+            background: var(--brand); color: #fff; font-size: 14px; cursor: pointer; font-weight: 600;
+        }
+        .chat-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .rich-content { margin: 8px 0; padding: 0; }
+        .rich-card {
+            display: flex; gap: 10px; padding: 10px; margin-bottom: 8px;
+            border: 1px solid var(--line); border-radius: 8px; background: #f8fafc; font-size: 12px;
+        }
+        .rich-card .rich-info { flex: 1; min-width: 0; }
+        .rich-card .rich-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+        .rich-card .rich-meta { color: var(--muted); font-size: 11px; line-height: 1.5; }
+        .rich-card .rich-price { color: var(--brand); font-weight: 700; font-size: 14px; }
+        .rich-card .rich-platform { display: inline-block; padding: 1px 6px; border-radius: 4px; background: var(--brand-soft); color: var(--brand); font-size: 10px; font-weight: 600; margin-right: 4px; }
+        .rich-card .rich-link { color: var(--brand); text-decoration: none; font-size: 11px; }
+        .rich-card .rich-link:hover { text-decoration: underline; }
+        .rich-section-title { font-size: 13px; font-weight: 600; color: var(--ink); margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+        .rich-weather { padding: 8px 10px; border-radius: 6px; background: var(--brand-soft); color: var(--brand); font-size: 12px; margin-bottom: 8px; }
+        .rich-reason { padding: 8px 10px; border-radius: 6px; background: #fefce8; color: #854d0e; font-size: 12px; line-height: 1.6; margin: 8px 0; }
+        .footer { padding: 0 20px 28px; text-align: center; font-size: 12px; color: var(--muted); }
+        @media (max-width: 960px) {
+            .layout { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+            .qr-col { order: -1; }
+            .qr-panel { position: static; }
+        }
+        @media (max-width: 560px) {
+            .metric-grid, .cap-grid { grid-template-columns: minmax(0, 1fr); }
+            .topbar { align-items: flex-start; }
+            .brand h1 { font-size: 18px; }
+            .tool-row { display: block; }
+            .tool-label { display: block; padding-top: 0; margin-bottom: 8px; }
+        }
+    </style>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="brand-mark">👗</span>
+        <div>
+            <h1>穿搭顾问机器人控制台</h1>
+            <p>Fashion Advisor ClawBot</p>
+        </div>
+    </div>
+    <div class="pill wait" id="headerPill">
+        <span class="pill-dot"></span>
+        <span id="headerPillText">待登录</span>
+    </div>
+</header>
+
+<main class="layout">
+    <div class="col-main">
+        <section class="section" aria-label="运行状态">
+            <div class="section-head">
+                <h2>运行状态</h2>
+                <span class="section-meta" id="updatedAt">--:--:--</span>
+            </div>
+            <div class="metric-grid">
+                <div class="metric">
+                    <span class="metric-label">连接状态</span>
+                    <span class="metric-value">
+                        <span class="dot wait" id="connDot"></span>
+                        <span id="connText">检测中</span>
+                    </span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">穿搭引擎</span>
+                    <span class="metric-value" id="llmText">检测中</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">机器人 ID</span>
+                    <span class="metric-value mono" id="botIdText">--</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">用户 ID</span>
+                    <span class="metric-value mono" id="userIdText">--</span>
+                </div>
+            </div>
+            <div class="tool-row">
+                <span class="tool-label">已启用工具</span>
+                <div class="chips" id="toolChips">
+                    <span class="chip empty">检测中</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" aria-label="机器人能力">
+            <div class="section-head">
+                <h2>机器人能力</h2>
+                <span class="section-meta" id="capCount">6 项能力</span>
+            </div>
+            <div class="cap-grid">
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-outfit">未启用</span>
+                    </div>
+                    <h3>穿搭方案生成</h3>
+                    <p>根据体型、天气、场合生成个性化搭配方案</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="m21 21-4.3-4.3"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-search">未启用</span>
+                    </div>
+                    <h3>多平台商品检索</h3>
+                    <p>淘宝、拼多多、抖音、唯品会四平台搜索</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20"/>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-compare">未启用</span>
+                    </div>
+                    <h3>智能比价</h3>
+                    <p>价格、评分、销量、性价比多维度对比</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="8" cy="21" r="1"/>
+                                <circle cx="19" cy="21" r="1"/>
+                                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-cart">未启用</span>
+                    </div>
+                    <h3>购物车管理</h3>
+                    <p>加购、查看、结算一站式购物管理</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+                                <path d="m16 14-4 4-4-4"/>
+                                <path d="M12 18v-9"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-weather">未启用</span>
+                    </div>
+                    <h3>天气查询</h3>
+                    <p>实时获取地址对应天气，驱动穿搭推荐</p>
+                </div>
+                <div class="cap-card">
+                    <div class="cap-head">
+                        <span class="cap-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </span>
+                        <span class="cap-status off" id="cap-body">未启用</span>
+                    </div>
+                    <h3>体型分析</h3>
+                    <p>BMI计算、体型分类与穿衣建议</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" aria-label="消息测试">
+            <div class="section-head">
+                <h2>微信消息测试</h2>
+                <span class="section-meta">模拟微信对话</span>
+            </div>
+            <div class="chat-test">
+                <h3>对话窗口</h3>
+                <div class="chat-msgs" id="chatMsgs">
+                    <div style="color:var(--muted);text-align:center;padding:20px 0;">机器人上线后可发送消息测试</div>
+                </div>
+                <div class="chat-input-row">
+                    <input type="text" id="chatInput" placeholder="输入消息，如：帮我搭配一套面试穿的衣服" disabled>
+                    <button id="chatSendBtn" onclick="sendChatMessage()" disabled>发送</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <aside class="qr-col">
+        <section class="qr-panel" aria-label="登录状态">
+            <div class="qr-top">
+                <h2>微信扫码登录</h2>
+                <span class="badge wait" id="qrBadge">等待扫码</span>
+            </div>
+
+            <div id="qrState">
+                <div class="qr-wrap">
+                    <img id="qr" src="/api/bot/qr.png" alt="微信登录二维码">
+                </div>
+                <p class="qr-hint" id="qrHint">打开微信扫一扫，扫描上方二维码</p>
+                <button type="button" class="scan-btn" id="scanBtn" onclick="simulateScan()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                        <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                        <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                        <rect x="8" y="8" width="8" height="8" rx="1"/>
+                    </svg>
+                    <span>模拟扫码登录</span>
+                </button>
+                <button type="button" class="refresh-btn" onclick="refreshOrRelogin()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                        <path d="M21 3v6h-6"/>
+                    </svg>
+                    <span id="refreshBtnText">刷新状态</span>
+                </button>
+            </div>
+
+            <div class="online-state" id="onlineState" hidden>
+                <div class="online-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                </div>
+                <h3>机器人已上线</h3>
+                <p class="online-id" id="onlineIds">--</p>
+            </div>
+
+            <button type="button" class="refresh-btn danger-btn" id="clearMemoryBtn" onclick="clearMemory()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                <span id="clearMemoryText">清除记忆</span>
+            </button>
+
+            <div class="steps">
+                <div class="step active" id="step1"><i>1</i><span>打开微信扫一扫</span></div>
+                <div class="step" id="step2"><i>2</i><span>扫描二维码并确认登录</span></div>
+                <div class="step" id="step3"><i>3</i><span>等待机器人上线</span></div>
+            </div>
+
+            <div class="error-box" id="errorBox" hidden></div>
+        </section>
+    </aside>
+</main>
+
+<footer class="footer">group-project · fashion-advisor ClawBot</footer>
+
+<script>
+    const TOOL_LABELS = {
+        outfit_consultation: "穿搭咨询",
+        product_search: "商品检索",
+        price_comparison: "智能比价",
+        cart_management: "购物车管理",
+        weather_query: "天气查询",
+        body_assessment: "体型分析",
+        get_weather: "天气工具",
+        get_current_time: "时间工具",
+        get_fashion_advice: "穿搭顾问工具",
+        zodiac_fortune: "星座运势"
+    };
+
+    const $ = (id) => document.getElementById(id);
+    let loggedIn = false;
+    let isJavaBot = false;
+
+    function connectionLabel(raw) {
+        const value = String(raw || "").toLowerCase();
+        if (value.includes("connected")) return "已连接";
+        if (value.includes("disconnect") || value.includes("offline") || value.includes("closed")) return "未连接";
+        if (value.includes("connect")) return "连接中";
+        return raw ? String(raw) : "未知";
+    }
+
+    function renderTools(tools) {
+        const box = $("toolChips");
+        box.innerHTML = "";
+        if (!Array.isArray(tools) || tools.length === 0) {
+            const chip = document.createElement("span");
+            chip.className = "chip empty";
+            chip.textContent = "暂无工具";
+            box.appendChild(chip);
+            return;
+        }
+        tools.forEach((name) => {
+            const chip = document.createElement("span");
+            chip.className = "chip";
+            chip.textContent = TOOL_LABELS[name] || name;
+            box.appendChild(chip);
+        });
+    }
+
+    function setToolCapability(id, toolName, tools) {
+        const el = $(id);
+        const enabled = tools.includes(toolName);
+        el.textContent = enabled ? "已启用" : "未启用";
+        el.className = "cap-status " + (enabled ? "on" : "off");
+    }
+
+    function render(data) {
+        loggedIn = !!data.loggedIn;
+        isJavaBot = !!data.javaBot;
+        $("refreshBtnText").textContent = loggedIn ? "刷新状态" : "重新登录";
+
+        const pill = $("headerPill");
+        pill.className = "pill " + (loggedIn ? "ok" : "wait");
+        $("headerPillText").textContent = loggedIn ? "运行中" : "待登录";
+
+        const connDot = $("connDot");
+        connDot.className = "dot " + (loggedIn ? "ok" : "wait");
+        $("connText").textContent = loggedIn ? "已连接" : connectionLabel(data.connectionStatus);
+
+        $("llmText").textContent = data.llmConfigured ? "已就绪" : "未配置";
+        $("botIdText").textContent = data.botId || "--";
+        $("userIdText").textContent = data.userId || "--";
+        renderTools(data.tools);
+        $("updatedAt").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+
+        const tools = Array.isArray(data.tools) ? data.tools : [];
+        setToolCapability("cap-outfit", "outfit_consultation", tools);
+        setToolCapability("cap-search", "product_search", tools);
+        setToolCapability("cap-compare", "price_comparison", tools);
+        setToolCapability("cap-cart", "cart_management", tools);
+        setToolCapability("cap-weather", "weather_query", tools);
+        setToolCapability("cap-body", "body_assessment", tools);
+        $("capCount").textContent = "6 项能力 · " + tools.length + " 个工具";
+
+        const qrBadge = $("qrBadge");
+        qrBadge.className = "badge " + (loggedIn ? "ok" : "wait");
+        qrBadge.textContent = loggedIn ? "已登录" : (isJavaBot ? "等待微信扫码" : "等待扫码");
+
+        $("qrState").hidden = loggedIn;
+        $("onlineState").hidden = !loggedIn;
+        $("scanBtn").style.display = loggedIn ? "none" : "flex";
+        $("scanBtn").querySelector("span").textContent = isJavaBot ? "等待微信扫码" : "模拟扫码登录";
+        $("chatInput").disabled = !loggedIn;
+        $("chatSendBtn").disabled = !loggedIn;
+
+        if (loggedIn) {
+            const ids = ["机器人 ID", data.botId || "--", "用户 ID", data.userId || "--"].join("  ·  ");
+            $("onlineIds").textContent = ids;
+            ["step1", "step2", "step3"].forEach((id) => { $(id).className = "step done"; });
+        } else {
+            const qr = $("qr");
+            qr.src = "/api/bot/qr.png?t=" + Date.now();
+            ["step1", "step2", "step3"].forEach((id) => $(id).className = "step");
+            $("step1").className = "step active";
+        }
+    }
+
+    function renderUnreachable() {
+        $("refreshBtnText").textContent = "重新登录";
+        const pill = $("headerPill");
+        pill.className = "pill err";
+        $("headerPillText").textContent = "服务不可用";
+        $("connDot").className = "dot err";
+        $("connText").textContent = "无法连接";
+        $("llmText").textContent = "--";
+        $("updatedAt").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+    }
+
+    async function refresh() {
+        try {
+            const response = await fetch("/api/bot/status", { cache: "no-store" });
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            render(await response.json());
+        } catch (e) {
+            renderUnreachable();
+        }
+    }
+
+    async function refreshOrRelogin() {
+        if (!loggedIn) {
+            try { await fetch("/api/bot/relogin", { method: "POST" }); } catch (e) {}
+        }
+        refresh();
+    }
+
+    async function simulateScan() {
+        try {
+            const response = await fetch("/api/bot/scan", { method: "POST" });
+            const data = await response.json();
+            if (data.success) {
+                $("step2").className = "step active";
+                $("step1").className = "step done";
+                setTimeout(refresh, 500);
+            } else if (isJavaBot && !data.success) {
+                $("qrHint").textContent = "请用微信扫描上方二维码完成登录";
+                $("qrHint").style.color = "var(--brand)";
+                setTimeout(refresh, 2000);
+            }
+        } catch (e) {}
+    }
+
+    async function clearMemory() {
+        if (!confirm("确定清除机器人保存的全部对话记忆吗？")) return;
+        const button = $("clearMemoryBtn");
+        const text = $("clearMemoryText");
+        button.disabled = true;
+        text.textContent = "清除中…";
+        try {
+            const response = await fetch("/api/bot/memory/clear", { method: "POST" });
+            const data = await response.json();
+            alert("记忆已清除，共删除 " + data.deleted + " 条记录。");
+        } catch (e) {
+            alert("清除失败：" + e.message);
+        } finally {
+            button.disabled = false;
+            text.textContent = "清除记忆";
+        }
+    }
+
+    async function sendChatMessage() {
+        const input = $("chatInput");
+        const text = input.value.trim();
+        if (!text) return;
+        const msgs = $("chatMsgs");
+        if (msgs.querySelector('div[style]')) msgs.innerHTML = '';
+        const userDiv = document.createElement("div");
+        userDiv.className = "msg-user";
+        userDiv.textContent = "我: " + text;
+        msgs.appendChild(userDiv);
+        input.value = "";
+        $("chatSendBtn").disabled = true;
+        msgs.scrollTop = msgs.scrollHeight;
+
+        const botDiv = document.createElement("div");
+        botDiv.className = "msg-bot";
+        botDiv.textContent = "顾问: 正在思考...";
+        msgs.appendChild(botDiv);
+        msgs.scrollTop = msgs.scrollHeight;
+
+        try {
+            const response = await fetch("/api/bot/rich_message", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ wx_user_id: "console_test", text: text })
+            });
+            const data = await response.json();
+            botDiv.innerHTML = "";
+            const label = document.createElement("div");
+            label.textContent = "顾问:";
+            label.style.fontWeight = "600";
+            label.style.color = "var(--brand)";
+            label.style.marginBottom = "6px";
+            botDiv.appendChild(label);
+
+            if (data.data && data.intent === "outfit_request") {
+                renderRichOutfit(botDiv, data.data);
+                const textPart = document.createElement("div");
+                textPart.textContent = data.reply || "";
+                textPart.style.marginTop = "8px";
+                textPart.style.whiteSpace = "pre-wrap";
+                botDiv.appendChild(textPart);
+            } else if (data.data && data.intent === "weather_query") {
+                renderRichWeather(botDiv, data.data);
+            } else if (data.data && data.intent === "cart_operation") {
+                renderRichCart(botDiv, data.data);
+            } else {
+                const textPart = document.createElement("div");
+                textPart.textContent = data.reply || "（无回复）";
+                textPart.style.whiteSpace = "pre-wrap";
+                botDiv.appendChild(textPart);
+            }
+        } catch (e) {
+            botDiv.textContent = "顾问: 发送失败 - " + e.message;
+        } finally {
+            $("chatSendBtn").disabled = false;
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+    }
+
+    function renderRichOutfit(container, d) {
+        const outfit = d.outfit || {};
+        const weather = d.weather || {};
+        const products = d.products || {};
+
+        if (weather.temp !== undefined) {
+            const w = document.createElement("div");
+            w.className = "rich-weather";
+            w.textContent = `🌡️ ${weather.desc || ""} ${weather.temp}°C (体感${weather.feels_like || weather.temp}°C) | 💧 湿度${weather.humidity || 50}%`;
+            container.appendChild(w);
+        }
+
+        const title = document.createElement("div");
+        title.className = "rich-section-title";
+        title.textContent = `👔 穿搭方案 · ${outfit.occasion || ""} · ${outfit.season || ""}`;
+        container.appendChild(title);
+
+        (outfit.items || []).forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "rich-card";
+            const info = document.createElement("div");
+            info.className = "rich-info";
+            info.innerHTML = `<div class="rich-name">${item.category || ""}: ${item.name || ""}</div>` +
+                `<div class="rich-meta">颜色: ${item.color || ""} | 面料: ${item.material || ""}</div>` +
+                `<div class="rich-meta">${item.desc || ""}</div>`;
+            card.appendChild(info);
+            container.appendChild(card);
+        });
+
+        if (outfit.reason) {
+            const reason = document.createElement("div");
+            reason.className = "rich-reason";
+            reason.textContent = "💡 " + outfit.reason;
+            container.appendChild(reason);
+        }
+
+        const bestPicks = products.best_picks || [];
+        if (bestPicks.length > 0) {
+            const pt = document.createElement("div");
+            pt.className = "rich-section-title";
+            pt.textContent = "🔍 最优商品推荐";
+            container.appendChild(pt);
+
+            bestPicks.forEach((p) => {
+                const card = document.createElement("div");
+                card.className = "rich-card";
+                const info = document.createElement("div");
+                info.className = "rich-info";
+                let html = `<div class="rich-name">` +
+                    `<span class="rich-platform">${p.platform || ""}</span>` +
+                    `${p.product_name || ""}</div>`;
+                html += `<div class="rich-price">¥${p.total_price || 0}</div>`;
+                html += `<div class="rich-meta">⭐ ${p.rating || 0} | ${p.seller || ""} | 运费 ¥${p.shipping_fee || 0}</div>`;
+                if (p.product_url) {
+                    html += `<a class="rich-link" href="${p.product_url}" target="_blank">查看商品 ↗</a>`;
+                }
+                info.innerHTML = html;
+                card.appendChild(info);
+                container.appendChild(card);
+            });
+
+            if (products.total_price) {
+                const total = document.createElement("div");
+                total.style.cssText = "text-align:right;font-size:13px;font-weight:700;color:var(--brand);margin-top:4px;";
+                total.textContent = `📦 推荐单品总计: ¥${products.total_price}`;
+                container.appendChild(total);
+            }
+        }
+    }
+
+    function renderRichWeather(container, w) {
+        const box = document.createElement("div");
+        box.className = "rich-weather";
+        box.innerHTML = `🌡️ 温度: ${w.temp || 20}°C (体感${w.feels_like || w.temp || 20}°C)<br>` +
+            `🌤️ 天气: ${w.desc || ""}<br>` +
+            `💧 湿度: ${w.humidity || 50}%<br>` +
+            `${w.advice || ""}`;
+        container.appendChild(box);
+    }
+
+    function renderRichCart(container, d) {
+        const items = d.items || [];
+        if (items.length === 0) {
+            const empty = document.createElement("div");
+            empty.style.cssText = "color:var(--muted);font-size:13px;padding:8px;";
+            empty.textContent = "🛒 购物车是空的";
+            container.appendChild(empty);
+            return;
+        }
+        const title = document.createElement("div");
+        title.className = "rich-section-title";
+        title.textContent = `🛒 购物车 · ${items.length} 件商品`;
+        container.appendChild(title);
+        items.forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "rich-card";
+            const info = document.createElement("div");
+            info.className = "rich-info";
+            info.innerHTML = `<div class="rich-name"><span class="rich-platform">${item.platform || ""}</span>${item.product_name || ""}</div>` +
+                `<div class="rich-price">¥${item.total_price || 0}</div>` +
+                `<div class="rich-meta">${item.seller || ""} | ${item.selected_size || ""}</div>`;
+            card.appendChild(info);
+            container.appendChild(card);
+        });
+        const total = document.createElement("div");
+        total.style.cssText = "text-align:right;font-size:13px;font-weight:700;color:var(--brand);margin-top:4px;";
+        total.textContent = `总计: ¥${d.total || 0}`;
+        container.appendChild(total);
+    }
+
+    $("chatInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendChatMessage();
+    });
+
+    $("qr").addEventListener("error", () => {
+        $("qrHint").textContent = "二维码加载失败，请确认服务已启动";
+    });
+
+    refresh();
+    setInterval(refresh, 3000);
+</script>
+</body>
+</html>

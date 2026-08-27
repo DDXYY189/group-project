@@ -543,6 +543,27 @@ public class LlmService {
         timeTool.set("function", timeFunc);
         tools.add(timeTool);
 
+        // 工具3: get_fashion_advice — 穿搭顾问 (调用 Flask 穿搭顾问服务)
+        ObjectNode fashionTool = objectMapper.createObjectNode();
+        fashionTool.put("type", "function");
+        ObjectNode fashionFunc = objectMapper.createObjectNode();
+        fashionFunc.put("name", "get_fashion_advice");
+        fashionFunc.put("description", "查询个性化穿搭建议。根据用户的体型、天气、场合生成穿搭方案，并在淘宝、拼多多、抖音、唯品会等平台进行比价。当用户询问穿搭、搭配、穿什么衣服、面试穿什么、约会穿什么等问题时调用此工具。");
+        ObjectNode fashionParams = objectMapper.createObjectNode();
+        fashionParams.put("type", "object");
+        ObjectNode fashionProps = objectMapper.createObjectNode();
+        ObjectNode queryProp = objectMapper.createObjectNode();
+        queryProp.put("type", "string");
+        queryProp.put("description", "用户的穿搭需求描述，如'适合面试穿的衣服'、'今天约会穿什么'等");
+        fashionProps.set("query", queryProp);
+        fashionParams.set("properties", fashionProps);
+        ArrayNode fashionRequired = objectMapper.createArrayNode();
+        fashionRequired.add("query");
+        fashionParams.set("required", fashionRequired);
+        fashionFunc.set("parameters", fashionParams);
+        fashionTool.set("function", fashionFunc);
+        tools.add(fashionTool);
+
         return tools;
     }
 
@@ -578,6 +599,25 @@ public class LlmService {
                     return String.format("当前北京时间：%s %s\n农历：%s\n节气：%s",
                             gregorian, weekDay, lunarDate,
                             jieQi != null ? jieQi : "无");
+                }
+                case "get_fashion_advice": {
+                    String query = args.path("query").asText("");
+                    System.out.println("🔧 [Function Calling] 执行 get_fashion_advice, query=" + query);
+                    String json = "{\"wx_user_id\":\"java_llm_tool\",\"text\":\"" +
+                            query.replace("\"", "\\\"").replace("\n", "\\n") + "\"}";
+                    HttpRequest freq = HttpRequest.newBuilder()
+                            .uri(URI.create("http://localhost:5000/api/bot/message"))
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString(json))
+                            .timeout(Duration.ofSeconds(30))
+                            .build();
+                    HttpResponse<String> fresp = httpClient.send(freq,
+                            HttpResponse.BodyHandlers.ofString());
+                    if (fresp.statusCode() == 200) {
+                        JsonNode respJson = objectMapper.readTree(fresp.body());
+                        return respJson.path("reply").asText("穿搭顾问服务未返回有效结果。");
+                    }
+                    return "穿搭顾问服务暂时不可用 (HTTP " + fresp.statusCode() + ")。";
                 }
                 default:
                     System.err.println("⚠ 未知工具: " + toolName);

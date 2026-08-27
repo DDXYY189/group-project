@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模拟数据测试 - AI智能穿搭顾问</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        :root {
+            --glass-bg: rgba(255,255,255,0.12);
+            --glass-border: rgba(255,255,255,0.25);
+            --glass-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            --text-primary: #fff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --accent: #e8956f;
+            --accent-light: rgba(232,149,111,0.3);
+            --card-bg: rgba(255,255,255,0.1);
+            --green: #7ed8a8;
+            --blue: #7ec5ff;
+            --red: #ff8888;
+            --gold: #ffd966;
+        }
+        body {
+            font-family: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+            min-height: 100vh; color: var(--text-primary);
+            background: linear-gradient(135deg,#1a1a2e 0%,#16213e 30%,#3a1c4e 60%,#2d1b4e 100%);
+            background-size: 200% 200%; animation: gradientShift 15s ease infinite;
+            padding: 16px;
+        }
+        @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .container { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; }
+        .header h1 { font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg,#e8956f,#f0a878,#d4a5c8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; background: rgba(126,216,168,0.18); border: 1px solid rgba(126,216,168,0.4); color: var(--green); }
+
+        .glass-card { background: var(--glass-bg); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: var(--glass-shadow); padding: 20px 16px; }
+        .section-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+        .control-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .control-bar select { padding: 10px 14px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer; flex: 1; min-width: 120px; }
+        .control-bar select option { background: #1a1a2e; color: #fff; }
+        .btn { padding: 10px 24px; border: none; border-radius: 12px; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all .3s; background: linear-gradient(135deg,#e8956f,#d4795f); color: #fff; box-shadow: 0 4px 18px rgba(232,149,111,0.35); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(232,149,111,0.5); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .tag { padding: 3px 10px; border-radius: 20px; font-size: 0.68rem; font-weight: 500; }
+        .tag-season { background: rgba(232,149,111,0.2); border: 1px solid rgba(232,149,111,0.35); color: #f0a878; }
+        .tag-weather { background: rgba(100,180,255,0.15); border: 1px solid rgba(100,180,255,0.3); color: var(--blue); font-size: 0.65rem; }
+
+        .outfit-cards { display: flex; flex-direction: column; gap: 10px; }
+        .outfit-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; }
+        .outfit-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12); }
+        .outfit-info { flex: 1; min-width: 0; }
+        .outfit-info .name { font-size: 0.88rem; font-weight: 600; margin-bottom: 3px; }
+        .outfit-info .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+        .outfit-info .meta span { font-size: 0.68rem; padding: 2px 7px; border-radius: 8px; background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+        .outfit-info .desc { font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5; }
+        .reason-box { margin-top: 14px; padding: 12px 14px; background: rgba(232,149,111,0.1); border: 1px solid rgba(232,149,111,0.22); border-radius: 12px; font-size: 0.8rem; line-height: 1.65; color: rgba(255,255,255,0.85); }
+        .reason-box .label { font-weight: 600; color: #f0a878; margin-bottom: 3px; display: block; }
+
+        .product-item-group { margin-bottom: 16px; }
+        .product-item-group > h4 { font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; }
+        .product-cards { display: flex; flex-direction: column; gap: 8px; }
+        .product-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; display: flex; gap: 10px; align-items: flex-start; }
+        .product-card.best { border-color: rgba(126,216,168,0.4); background: rgba(126,216,168,0.08); }
+        .product-platform { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; background: rgba(255,255,255,0.1); }
+        .product-info { flex: 1; min-width: 0; }
+        .product-info .pname { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+        .product-info .pname a { color: inherit; text-decoration: none; }
+        .product-info .pmeta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .pprice { font-size: 0.95rem; font-weight: 700; color: var(--accent); }
+        .porig { font-size: 0.7rem; color: rgba(255,255,255,0.35); text-decoration: line-through; }
+        .prating { font-size: 0.7rem; color: var(--gold); }
+        .pshipping { font-size: 0.68rem; color: var(--text-secondary); }
+        .pseller { font-size: 0.68rem; color: var(--text-secondary); }
+        .pplatform-badge { font-size: 0.65rem; font-weight: 600; padding: 2px 7px; border-radius: 8px; background: rgba(232,149,111,0.18); border: 1px solid rgba(232,149,111,0.3); color: #f0a878; }
+        .best-badge { padding: 2px 8px; border-radius: 8px; font-size: 0.65rem; font-weight: 600; background: rgba(126,216,168,0.2); border: 1px solid rgba(126,216,168,0.4); color: var(--green); }
+        .add-cart-btn { padding: 6px 12px; background: rgba(232,149,111,0.2); border: 1px solid rgba(232,149,111,0.4); border-radius: 8px; color: var(--accent); font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; display: flex; align-items: center; justify-content: center; }
+        .add-cart-btn:hover { background: rgba(232,149,111,0.35); }
+        .product-actions { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+
+        .loading { display: none; text-align: center; padding: 30px 0; }
+        .loading.active { display: block; }
+        .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.12); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 10px; }
+
+        .api-info { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; padding: 14px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.8; }
+        .api-info code { color: var(--blue); background: rgba(0,0,0,0.3); padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; }
+        .api-info a { color: var(--accent); text-decoration: none; }
+
+        .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 16px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>AI 智能穿搭顾问 - 测试接口</h1>
+        <span class="badge">模拟数据</span>
+    </div>
+
+    <div class="glass-card">
+        <div class="section-title"> testData 接口测试工具</div>
+        <div class="control-bar">
+            <select id="occasionSelect">
+                <option value="日常通勤">日常通勤</option>
+                <option value="商务会议">商务会议</option>
+                <option value="面试">面试</option>
+                <option value="约会">约会</option>
+                <option value="旅行">旅行</option>
+                <option value="派对">派对</option>
+                <option value="婚礼">婚礼</option>
+                <option value="休闲">休闲</option>
+            </select>
+            <button class="btn" id="loadBtn" onclick="loadMockData()">生成模拟数据</button>
+        </div>
+        <div class="api-info" style="margin-top:14px;">
+            API端点：<br>
+            <code>GET /api/mock?occasion=日常通勤</code> - 完整数据<br>
+            <code>GET /api/mock/products</code> - 仅商品比价<br>
+            <code>GET /api/mock/outfit</code> - 仅穿搭方案<br>
+            <code>GET /test</code> - 本测试页面
+        </div>
+    </div>
+
+    <div class="loading" id="loadingBox">
+        <div class="spinner"></div>
+        <div style="color:var(--text-secondary);font-size:0.85rem;">正在生成模拟数据...</div>
+    </div>
+
+    <div id="resultContainer"></div>
+</div>
+
+<script>
+const icons = {"上装":"👕","下装":"👖","外套":"🧥","鞋履":"👟","配饰":"👜"};
+
+function loadMockData() {
+    const occasion = document.getElementById('occasionSelect').value;
+    const loadBtn = document.getElementById('loadBtn');
+    const loadingBox = document.getElementById('loadingBox');
+    const container = document.getElementById('resultContainer');
+
+    loadBtn.disabled = true;
+    loadingBox.classList.add('active');
+    container.innerHTML = '';
+
+    fetch('/api/mock?occasion=' + encodeURIComponent(occasion))
+        .then(r => r.json())
+        .then(data => {
+            renderResult(data);
+        })
+        .catch(e => {
+            container.innerHTML = '<div class="glass-card" style="color:var(--red);text-align:center;padding:30px;">加载失败: ' + e.message + '</div>';
+        })
+        .finally(() => {
+            loadBtn.disabled = false;
+            loadingBox.classList.remove('active');
+        });
+}
+
+function renderResult(data) {
+    const container = document.getElementById('resultContainer');
+    const ps = data.profile_summary || {};
+    const weather = data.weather || {};
+    const outfit = data.outfit || {};
+    const products = data.products || {};
+    const risk = data.risk_check || {};
+
+    let html = '';
+
+    html += '<div class="glass-card"><div class="section-title">testData 环境与用户分析</div>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">';
+    html += '<span class="tag tag-season">' + (outfit.season||'') + ' ' + (outfit.occasion||'') + '</span>';
+    html += '<span class="tag tag-weather">' + (ps.address||'') + ' ' + (weather.temp||20) + '°C ' + (weather.desc||'') + '</span>';
+    html += '<span class="tag tag-weather">体感' + (weather.feels_like||weather.temp||20) + '°C</span>';
+    html += '<span class="tag tag-weather">湿度' + (weather.humidity||50) + '%</span>';
+    html += '</div>';
+    html += '<div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.6;">';
+    if (ps.age) html += '<div>年龄: <strong style="color:var(--accent);">' + ps.age + '岁</strong> | 性别: <strong>' + (ps.gender||'') + '</strong></div>';
+    html += '<div>体型: <strong style="color:var(--accent);">' + (ps.body_type||'未知') + '</strong> (BMI: ' + (ps.bmi||'-') + ')</div>';
+    html += '<div style="margin-top:4px;">' + (ps.body_advice||'') + '</div>';
+    html += '<div style="margin-top:4px;color:var(--blue);">' + (weather.advice||'') + '</div>';
+    html += '</div></div>';
+
+    html += '<div class="glass-card"><div class="section-title">testData 穿搭方案</div><div class="outfit-cards">';
+    (outfit.items||[]).forEach((item, i) => {
+        html += '<div class="outfit-card" style="opacity:0;transform:translateY(15px);transition:all .4s ease;">';
+        html += '<div class="outfit-icon">' + (icons[item.category]||'testData') + '</div>';
+        html += '<div class="outfit-info"><div class="name">' + (item.name||'') + '</div>';
+        html += '<div class="meta"><span>' + (item.color||'') + '</span><span>' + (item.material||'') + '</span></div>';
+        html += '<div class="desc">' + (item.desc||'') + '</div></div></div>';
+    });
+    html += '</div>';
+    html += '<div class="reason-box"><span class="label">testData 推荐理由</span><p>' + (outfit.reason||'') + '</p></div></div>';
+
+    if (products.details && products.details.length > 0) {
+        html += '<div class="glass-card"><div class="section-title">testData 多平台比价结果</div>';
+        html += '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:10px;">推荐单品总计: <strong style="color:var(--accent);font-size:1rem;">¥' + (products.total_price||0) + '</strong></div>';
+
+        products.details.forEach(group => {
+            const item = group.item;
+            const comp = group.comparison;
+            if (!comp || !comp.comparison) return;
+            html += '<div class="product-item-group"><h4>' + (icons[item.category]||'') + ' ' + (item.name||'') + '</h4><div class="product-cards">';
+
+            (comp.comparison||[]).slice(0,4).forEach(p => {
+                const isBest = comp.best && p.platform === comp.best.platform && p.product_name === comp.best.product_name;
+                html += '<div class="product-card ' + (isBest?'best':'') + '">';
+                html += '<div class="product-platform">' + (p.platform_icon||'') + '</div>';
+                html += '<div class="product-info">';
+                html += '<div class="pname"><a href="' + (p.product_url||'#') + '" target="_blank" rel="noopener">' + (p.product_name||'') + ' ↗</a></div>';
+                html += '<div class="pmeta">';
+                html += '<span class="pprice">¥' + (p.total_price||0) + '</span>';
+                if (p.original_price) html += '<span class="porig">¥' + p.original_price + '</span>';
+                html += '</div>';
+                html += '<div class="pmeta" style="margin-top:4px;">';
+                html += '<span class="pplatform-badge">' + (p.platform||'') + '</span>';
+                html += '<span class="pseller">' + (p.seller||'') + '</span>';
+                if (p.rating) html += '<span class="prating">' + p.rating + '⭐</span>';
+                html += '<span class="pshipping">' + (p.shipping_fee===0?'包邮':'运费¥'+p.shipping_fee) + '</span>';
+                html += '</div>';
+                html += '<div style="font-size:0.68rem;color:var(--text-secondary);margin-top:2px;">尺码: ' + ((p.sizes_available||[]).join(', ')||'均码') + '</div>';
+                html += '</div>';
+                if (isBest) html += '<span class="best-badge">最优</span>';
+                html += '<div class="product-actions"><a href="' + (p.product_url||'#') + '" target="_blank" rel="noopener" class="add-cart-btn">去购买</a></div>';
+                html += '</div>';
+            });
+            html += '</div></div>';
+        });
+        html += '</div>';
+    }
+
+    html += '<div class="glass-card"><div class="section-title">testData 风险检查</div><div>';
+    if (risk.warnings && risk.warnings.length > 0) {
+        risk.warnings.forEach(w => { html += '<div style="color:var(--red);font-size:0.8rem;margin-bottom:6px;">testData ' + w + '</div>'; });
+    } else {
+        html += '<div style="color:var(--green);font-size:0.8rem;">testData 所有商品通过合规检查</div>';
+    }
+    if (risk.recommendations) risk.recommendations.forEach(r => { html += '<div style="color:var(--text-secondary);font-size:0.78rem;margin-bottom:4px;">testData ' + r + '</div>'; });
+    html += '</div></div>';
+
+    html += '<div style="text-align:center;color:var(--text-secondary);font-size:0.72rem;padding:10px;">生成时间: ' + (data.generated_at||'') + '</div>';
+
+    container.innerHTML = html;
+    const cards = container.querySelectorAll('.outfit-card');
+    cards.forEach((card, i) => { setTimeout(() => { card.style.opacity='1'; card.style.transform='translateY(0)'; }, 100+i*150); });
+}
+
+// 自动加载一次
+window.addEventListener('DOMContentLoaded', function() {
+    loadMockData();
+});
+</script>
+</body>
+</html>
