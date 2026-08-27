@@ -67,7 +67,8 @@ public class McpToolBridge implements BotTool {
             args = objectMapper.convertValue(arguments, new TypeReference<>() {
             });
         }
-        McpSchema.CallToolResult result = caller.call(remoteTool.name(), args);
+        Map<String, Object> meta = Map.of("userId", userId == null ? "mcp-demo" : userId);
+        McpSchema.CallToolResult result = caller.call(remoteTool.name(), args, meta);
         return format(result);
     }
 

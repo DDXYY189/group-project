@@ -10,6 +10,22 @@ MCP（Model Context Protocol）是 Anthropic 在 2024 年提出的开放协议�
 
 本项目使用官方 Java MCP SDK `io.modelcontextprotocol.sdk:mcp:2.0.1`，把远程 MCP 工具适配为现有 `BotTool`，统一交给 LLM 工具调用。
 
+## 内置演示 Server（A2 方案）
+
+项目默认开启一个同应用内的 MCP 演示 Server：
+
+- HTTP 端点：`http://localhost:8080/mcp/demo`
+- 只暴露三个 MCP 专用演示工具：`demo_echo`、`demo_current_time`、`demo_add`
+- 客户端启动后自动连接，远程工具注册为 `mcp_demo_<tool>`
+
+这样即使没有 Node/Python/外部 MCP Server，也能完整演示 MCP 协议链路。
+
+可通过以下配置关闭内置演示 Server：
+
+```properties
+mcp.demo-server-enabled=false
+```
+
 ## 接入方式
 
 在 `application.properties` 中配置 `mcp.servers.*`，服务启动后会自动连接并把工具注册到 `ToolRegistry`：

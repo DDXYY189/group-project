@@ -51,8 +51,14 @@ mvn spring-boot:run
 
 项目已接入官方 Java MCP SDK，支持通过 `application.properties` 配置 stdio、SSE 和 Streamable HTTP 三类 MCP Server。远程工具会自动注册成 `mcp_<server>_<tool>` 形式的本地工具，微信对话中可直接调用。
 
+默认已启用内置 MCP 演示 Server（A2 方案）：应用启动后在 `/mcp/demo` 只暴露 `demo_echo`、`demo_current_time`、`demo_add` 三个 MCP 专用演示工具，避免工具列表过多。客户端会自动连接它，控制台 MCP 面板可直接看到连接状态和已接入工具，无需安装 Node/Python。
+
 ```properties
 mcp.enabled=true
+mcp.demo-server-enabled=true
+mcp.servers.demo.type=http
+mcp.servers.demo.url=http://localhost:8080
+mcp.servers.demo.endpoint=/mcp/demo
 # mcp.servers.everything.type=stdio
 # mcp.servers.everything.command=npx
 # mcp.servers.everything.args=-y,@modelcontextprotocol/server-everything

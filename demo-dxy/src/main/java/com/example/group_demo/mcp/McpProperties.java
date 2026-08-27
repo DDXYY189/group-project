@@ -12,6 +12,7 @@ import java.util.Map;
 public class McpProperties {
 
     private boolean enabled = true;
+    private boolean demoServerEnabled = true;
     private Duration connectTimeout = Duration.ofSeconds(10);
     private Duration requestTimeout = Duration.ofSeconds(60);
     private Map<String, Server> servers = new LinkedHashMap<>();
@@ -22,6 +23,14 @@ public class McpProperties {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isDemoServerEnabled() {
+        return demoServerEnabled;
+    }
+
+    public void setDemoServerEnabled(boolean demoServerEnabled) {
+        this.demoServerEnabled = demoServerEnabled;
     }
 
     public Duration getConnectTimeout() {
@@ -53,6 +62,7 @@ public class McpProperties {
         private boolean enabled = true;
         private String type = "stdio";
         private String url = "";
+        private String endpoint = "/mcp";
         private String command = "";
         private List<String> args = new ArrayList<>();
         private Map<String, String> env = new LinkedHashMap<>();
@@ -80,6 +90,14 @@ public class McpProperties {
 
         public void setUrl(String url) {
             this.url = url;
+        }
+
+        public String getEndpoint() {
+            return endpoint;
+        }
+
+        public void setEndpoint(String endpoint) {
+            this.endpoint = endpoint;
         }
 
         public String getCommand() {

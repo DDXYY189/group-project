@@ -11,10 +11,11 @@ import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.McpJsonMapperSupplier;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.net.http.HttpRequest;
@@ -46,7 +47,7 @@ public class McpToolManager {
         this.toolRegistry = toolRegistry;
     }
 
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void init() {
         if (properties.isEnabled()) {
             connectAll();
@@ -134,8 +135,8 @@ public class McpToolManager {
             client.initialize();
             List<McpSchema.Tool> remoteTools = client.listTools().tools();
             List<McpToolBridge> bridges = new ArrayList<>();
-            McpToolCaller caller = (toolName, args) ->
-                client.callTool(new McpSchema.CallToolRequest(toolName, args));
+            McpToolCaller caller = (toolName, args, meta) ->
+                client.callTool(new McpSchema.CallToolRequest(toolName, args, meta));
             for (McpSchema.Tool tool : remoteTools) {
                 String registeredName = uniqueName(name, tool.name());
                 McpToolBridge bridge = new McpToolBridge(name, registeredName, tool, caller);
@@ -178,11 +179,13 @@ public class McpToolManager {
             case "streamable":
                 return HttpClientStreamableHttpTransport.builder(server.getUrl())
                     .jsonMapper(jsonMapper)
+                    .endpoint(server.getEndpoint())
                     .requestBuilder(requestBuilder(server))
                     .build();
             case "sse":
                 return HttpClientSseClientTransport.builder(server.getUrl())
                     .jsonMapper(jsonMapper)
+                    .sseEndpoint(server.getEndpoint())
                     .requestBuilder(requestBuilder(server))
                     .build();
             default:

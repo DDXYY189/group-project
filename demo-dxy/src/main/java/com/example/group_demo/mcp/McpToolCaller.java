@@ -7,5 +7,6 @@ import java.util.Map;
 @FunctionalInterface
 public interface McpToolCaller {
 
-    McpSchema.CallToolResult call(String toolName, Map<String, Object> arguments);
+    McpSchema.CallToolResult call(String toolName, Map<String, Object> arguments,
+                                  Map<String, Object> meta);
 }

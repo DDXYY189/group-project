@@ -22,9 +22,10 @@ class McpToolBridgeTest {
                 "required", List.of()
             ))
             .build();
-        McpToolCaller caller = (name, args) -> {
+        McpToolCaller caller = (name, args, meta) -> {
             assertEquals("remote_time", name);
             assertTrue(args.isEmpty());
+            assertEquals("u1", meta.get("userId"));
             return McpSchema.CallToolResult.builder()
                 .addTextContent("10:30")
                 .build();
