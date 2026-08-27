@@ -27,7 +27,8 @@ public class WebSearchTool implements BotTool {
     @Override
     public String description() {
         return "联网搜索互联网并返回搜索到的信息摘要。"
-            + "当用户需要查询实时信息、最新新闻、人物事件或任何需要联网获取的内容时调用。";
+            + "当用户需要查询实时信息、最新新闻、人物事件或任何需要联网获取的内容时调用。"
+            + "query 必须使用用户的原始问题，不要改写，不要添加预测、推测等词。";
     }
 
     @Override
@@ -54,5 +55,10 @@ public class WebSearchTool implements BotTool {
         String query = arguments.path("query").asText("").trim();
         int maxResults = arguments.path("max_results").asInt(properties.getMaxResults());
         return searchService.search(query, maxResults);
+    }
+
+    @Override
+    public boolean relayToUser() {
+        return true;
     }
 }

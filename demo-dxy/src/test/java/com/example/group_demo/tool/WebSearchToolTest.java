@@ -75,8 +75,14 @@ class WebSearchToolTest {
         assertEquals("大模型", requestBody.path("messages").get(1).path("content").asText());
         JsonNode searchTool = requestBody.path("tools").get(0);
         assertEquals("web_search", searchTool.path("type").asText());
-        assertEquals("大模型", searchTool.path("web_search").path("search_query").asText());
-        assertEquals(2, searchTool.path("web_search").path("search_top_k").asInt());
+        JsonNode webSearch = searchTool.path("web_search");
+        assertEquals(true, webSearch.path("enable").asBoolean());
+        assertEquals("search_pro", webSearch.path("search_engine").asText());
+        assertEquals(true, webSearch.path("search_result").asBoolean());
+        assertTrue(webSearch.path("search_prompt").asText().contains("{search_result}"));
+        assertEquals(2, webSearch.path("count").asInt());
+        assertEquals("auto", requestBody.path("tool_choice").asText());
+        assertEquals(false, requestBody.path("stream").asBoolean());
     }
 
     @Test

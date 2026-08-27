@@ -8,6 +8,7 @@ public class SearchProperties {
     private String apiKey = "";
     private String baseUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
     private String model = "glm-4-flash";
+    private String engine = "search_pro";
     private int maxResults = 8;
 
     public String getApiKey() {
@@ -32,6 +33,14 @@ public class SearchProperties {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public String getEngine() {
+        return engine;
+    }
+
+    public void setEngine(String engine) {
+        this.engine = engine;
     }
 
     public int getMaxResults() {

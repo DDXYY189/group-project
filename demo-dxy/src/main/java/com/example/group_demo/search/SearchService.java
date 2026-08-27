@@ -16,8 +16,10 @@ public class SearchService {
 
     private static final Logger log = LoggerFactory.getLogger(SearchService.class);
     private static final int MAX_RESULTS = 10;
-    private static final String SEARCH_PROMPT =
+    private static final String SYSTEM_PROMPT =
         "你是一个联网搜索助手。请根据搜索结果用简洁的中文回答用户问题，尽量保留关键事实；如果结果中有来源链接，请一并列出。";
+    private static final String SEARCH_PROMPT =
+        "请根据网络搜索结果 {search_result} 用简洁的中文回答用户问题，尽量保留关键事实；如果结果中有来源链接，请一并列出。";
 
     private final SearchProperties properties;
     private final RestClient restClient;
@@ -38,20 +40,26 @@ public class SearchService {
         }
 
         int count = Math.max(1, Math.min(MAX_RESULTS, maxResults));
+        Map<String, Object> webSearch = new LinkedHashMap<>();
+        webSearch.put("enable", true);
+        webSearch.put("search_engine", properties.getEngine());
+        webSearch.put("search_result", true);
+        webSearch.put("search_prompt", SEARCH_PROMPT);
+        webSearch.put("count", count);
+        webSearch.put("content_size", "high");
         Map<String, Object> searchTool = Map.of(
             "type", "web_search",
-            "web_search", Map.of(
-                "search_query", trimmed,
-                "search_top_k", count
-            )
+            "web_search", webSearch
         );
         Map<String, Object> requestBody = new LinkedHashMap<>();
         requestBody.put("model", properties.getModel());
         requestBody.put("messages", List.of(
-            Map.of("role", "system", "content", SEARCH_PROMPT),
+            Map.of("role", "system", "content", SYSTEM_PROMPT),
             Map.of("role", "user", "content", trimmed)
         ));
         requestBody.put("tools", List.of(searchTool));
+        requestBody.put("tool_choice", "auto");
+        requestBody.put("stream", false);
 
         ChatResponse response = restClient.post()
             .uri(properties.getBaseUrl())

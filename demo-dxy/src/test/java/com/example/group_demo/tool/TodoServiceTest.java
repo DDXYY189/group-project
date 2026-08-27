@@ -51,6 +51,16 @@ class TodoServiceTest {
     }
 
     @Test
+    void clearAllRemovesEveryUsersTodos() {
+        todoService.add("u1", "写日报");
+        todoService.add("u2", "写周报");
+
+        assertEquals(2, todoService.clearAll());
+        assertEquals("暂无待办事项", todoService.list("u1"));
+        assertEquals("暂无待办事项", todoService.list("u2"));
+    }
+
+    @Test
     void persistsAcrossServiceInstances() {
         String url = "jdbc:h2:mem:todo-persist-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
         TodoService first =

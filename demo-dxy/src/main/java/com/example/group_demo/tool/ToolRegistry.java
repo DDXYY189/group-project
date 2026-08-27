@@ -2,6 +2,7 @@ package com.example.group_demo.tool;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,10 +24,18 @@ public class ToolRegistry {
             return;
         }
         for (BotTool tool : toolList) {
-            if (tools.put(tool.name(), tool) != null) {
-                throw new IllegalStateException("重复的工具名: " + tool.name());
-            }
+            register(tool);
         }
+    }
+
+    public void register(BotTool tool) {
+        if (tool == null) {
+            return;
+        }
+        if (tools.containsKey(tool.name())) {
+            throw new IllegalStateException("重复的工具名: " + tool.name());
+        }
+        tools.put(tool.name(), tool);
     }
 
     public List<BotTool> all() {
@@ -60,5 +69,22 @@ public class ToolRegistry {
             log.warn("工具执行失败 userId={} tool={} arguments={}", userId, name, argumentsJson, e);
             return "工具调用失败: " + e.getMessage();
         }
+    }
+
+    /**
+     * 链式编排使用：工具不存在或执行异常时直接抛出，由调用方决定是否中断整条链。
+     */
+    public String executeStrict(String userId, String name, String argumentsJson) {
+        BotTool tool = tools.get(name);
+        if (tool == null) {
+            throw new IllegalArgumentException("工具不存在: " + name);
+        }
+        JsonNode arguments;
+        try {
+            arguments = objectMapper.readTree(argumentsJson);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("工具参数不是合法 JSON: " + argumentsJson, e);
+        }
+        return tool.execute(userId, arguments);
     }
 }

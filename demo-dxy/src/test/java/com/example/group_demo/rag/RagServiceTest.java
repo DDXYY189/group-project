@@ -20,7 +20,7 @@ class RagServiceTest {
 
         enabledProps = new RagProperties();
         enabledProps.setEnabled(true);
-        enabledProps.setKeywords(List.of("项目", "功能", "工具"));
+        enabledProps.setKeywords(List.of("无锡", "旅游", "景点", "美食"));
 
         disabledProps = new RagProperties();
         disabledProps.setEnabled(false);
@@ -28,39 +28,40 @@ class RagServiceTest {
 
     @Test
     void knowledgeBaseLoadsDocuments() {
-        assertTrue(knowledgeBase.size() >= 3,
-            "知识库应至少加载 3 篇文档，实际: " + knowledgeBase.size());
+        assertTrue(knowledgeBase.size() >= 6,
+            "知识库应至少加载 6 篇无锡旅游文档，实际: " + knowledgeBase.size());
     }
 
     @Test
     void enabledRagRetrievesAndAugments() {
         RagService ragService = new RagService(enabledProps, knowledgeBase);
-        assertTrue(ragService.shouldRetrieve("这个项目用了什么架构"));
-        String augmented = ragService.augmentPrompt("你是助手", "项目架构是什么");
+        assertTrue(ragService.shouldRetrieve("无锡有什么景点"));
+        String augmented = ragService.augmentPrompt("你是助手", "无锡景点推荐");
         assertNotNull(augmented);
         assertTrue(augmented.contains("知识库"));
-        assertTrue(augmented.contains("Spring Boot"));
+        assertTrue(augmented.contains("鼋头渚") || augmented.contains("灵山"));
     }
 
     @Test
     void disabledRagDoesNotRetrieve() {
         RagService ragService = new RagService(disabledProps, knowledgeBase);
-        assertFalse(ragService.shouldRetrieve("项目架构是什么"));
+        assertFalse(ragService.shouldRetrieve("无锡有什么景点"));
+        assertEquals("你是助手", ragService.augmentPrompt("你是助手", "无锡景点"));
     }
 
     @Test
     void noKeywordMatchReturnsBasePrompt() {
         RagService ragService = new RagService(enabledProps, knowledgeBase);
-        String result = ragService.augmentPrompt("你是助手", "你好呀");
+        String result = ragService.augmentPrompt("你是助手", "今天心情真好");
         assertEquals("你是助手", result);
     }
 
     @Test
-    void comparisonTest() {
+    void ragComparisonTest() {
         RagService enabledRag = new RagService(enabledProps, knowledgeBase);
         RagService disabledRag = new RagService(disabledProps, knowledgeBase);
 
-        String query = "项目用了什么技术栈";
+        String query = "无锡有什么好吃的";
         boolean enabledRetrieves = enabledRag.shouldRetrieve(query);
         boolean disabledRetrieves = disabledRag.shouldRetrieve(query);
 
@@ -72,9 +73,9 @@ class RagServiceTest {
 
         assertNotEquals(enabledPrompt, disabledPrompt,
             "开启和关闭 RAG 的 Prompt 应不同");
-        assertTrue(enabledPrompt.contains("Spring Boot"),
-            "开启 RAG 时 Prompt 应包含知识库内容");
-        assertFalse(disabledPrompt.contains("Spring Boot"),
-            "关闭 RAG 时 Prompt 不应包含知识库内容");
+        assertTrue(enabledPrompt.contains("酱排骨") || enabledPrompt.contains("小笼包"),
+            "开启 RAG 时 Prompt 应包含无锡美食知识");
+        assertFalse(disabledPrompt.contains("酱排骨"),
+            "关闭 RAG 时 Prompt 不应包含无锡美食知识");
     }
 }

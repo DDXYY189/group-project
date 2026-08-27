@@ -76,6 +76,10 @@ public class TodoService {
         return deleted > 0 ? "已完成待办 #" + id : "未找到待办 #" + id;
     }
 
+    public int clearAll() {
+        return jdbcTemplate.update("DELETE FROM todo_item");
+    }
+
     public record TodoItem(int id, String text) {
     }
 }

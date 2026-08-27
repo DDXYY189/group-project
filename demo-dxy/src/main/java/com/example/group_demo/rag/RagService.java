@@ -33,17 +33,13 @@ public class RagService {
         return properties.getKeywords().stream().anyMatch(userText::contains);
     }
 
-    public String augmentPrompt(String userText) {
-        return augmentPrompt(null, userText);
-    }
-
     public String augmentPrompt(String baseSystemPrompt, String userText) {
         if (!properties.isEnabled()) {
             return baseSystemPrompt;
         }
         List<KnowledgeDocument> docs = knowledgeBase.search(userText);
         if (docs.isEmpty()) {
-            log.info("RAG 检索无命中，不增强 Prompt");
+            log.debug("RAG 检索无命中");
             return baseSystemPrompt;
         }
         StringBuilder sb = new StringBuilder();
@@ -55,7 +51,11 @@ public class RagService {
             sb.append("【").append(doc.title()).append("】\n");
             sb.append(doc.content()).append("\n\n");
         }
-        log.info("RAG 检索命中 {} 篇文档，已增强 Prompt", docs.size());
+        log.info("RAG 检索命中 {} 篇文档", docs.size());
         return sb.toString();
+    }
+
+    public List<KnowledgeDocument> search(String query) {
+        return knowledgeBase.search(query);
     }
 }

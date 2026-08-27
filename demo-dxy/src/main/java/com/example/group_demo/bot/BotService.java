@@ -6,6 +6,7 @@ import com.example.group_demo.intent.Intent;
 import com.example.group_demo.intent.ImageTextMerger;
 import com.example.group_demo.intent.IntentService;
 import com.example.group_demo.rag.RagService;
+import com.example.group_demo.skill.BotSkill;
 import com.example.group_demo.skill.SkillRegistry;
 import com.example.group_demo.tool.ToolRegistry;
 import com.example.group_demo.voice.VoiceService;
@@ -22,10 +23,6 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -37,11 +34,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Service
-public class BotService implements ApplicationRunner {
+public class BotService {
 
     private static final Logger log = LoggerFactory.getLogger(BotService.class);
 
+    private final String sessionId;
     private final ILinkClient client;
     private final LlmService llmService;
     private final VoiceService voiceService;
@@ -57,11 +54,12 @@ public class BotService implements ApplicationRunner {
     private volatile String loginError;
     private volatile LoginContext loginContext;
 
-    public BotService(@Lazy ILinkClient client, LlmService llmService, VoiceService voiceService,
-                      IntentService intentService, ImageService imageService,
+    public BotService(String sessionId, ILinkClient client, LlmService llmService,
+                      VoiceService voiceService, IntentService intentService, ImageService imageService,
                       ToolRegistry toolRegistry, ImageTextMerger imageTextMerger,
                       MessageDispatcher messageDispatcher,
                       SkillRegistry skillRegistry, RagService ragService) {
+        this.sessionId = sessionId;
         this.client = client;
         this.llmService = llmService;
         this.voiceService = voiceService;
@@ -74,32 +72,28 @@ public class BotService implements ApplicationRunner {
         this.ragService = ragService;
     }
 
-    @Override
-    public void run(ApplicationArguments args) {
-        startLogin();
-    }
-
     public void startLogin() {
         this.qrPng = null;
         this.loginError = null;
         try {
             String qrContent = client.executeLogin();
             this.qrPng = buildQrPng(qrContent);
-            log.info("二维码已就绪，访问 http://localhost:8080 扫码登录");
+            log.info("会话 {} 二维码已就绪，等待扫码", sessionId);
         } catch (Exception e) {
             this.loginError = e.getMessage();
-            log.error("获取登录二维码失败", e);
+            log.error("会话 {} 获取登录二维码失败", sessionId, e);
         }
     }
 
     public void onLoginSuccess(LoginContext context) {
         this.loginContext = context;
-        log.info("登录成功 botId={} userId={}", context.getBotId(), context.getUserId());
+        log.info("会话 {} 登录成功 botId={} userId={}",
+            sessionId, context.getBotId(), context.getUserId());
     }
 
     public void onLoginFailure(Throwable throwable) {
-        this.loginError = throwable.getMessage();
-        log.error("登录失败: {}", throwable.getMessage());
+        this.loginError = throwable == null ? null : throwable.getMessage();
+        log.error("会话 {} 登录失败: {}", sessionId, String.valueOf(throwable));
     }
 
     public void onMessages(List<WeixinMessage> messages) {
@@ -189,9 +183,18 @@ public class BotService implements ApplicationRunner {
             safeSendText(fromUserId, "好的，请把图片发给我，我来帮你识别。");
             return;
         }
+        // 1. Skill 关键词快速触发（零 LLM 调用）
+        Optional<BotSkill> matchedSkill = skillRegistry.match(userText);
+        if (matchedSkill.isPresent()) {
+            BotSkill skill = matchedSkill.get();
+            log.info("Skill 命中 userId={} skill={}", fromUserId, skill.name());
+            safeSendText(fromUserId, skill.execute(fromUserId, userText));
+            return;
+        }
+
         Intent intent = intentService.classify(userText);
         if (intent == null || intent.action() == null) {
-            routeMessage(fromUserId, userText);
+            routeTextMessage(fromUserId, userText);
             return;
         }
         switch (intent.action()) {
@@ -200,26 +203,26 @@ public class BotService implements ApplicationRunner {
             case "image" -> sendImageReply(fromUserId,
                 intent.imagePrompt() != null ? intent.imagePrompt() : userText,
                 intent.reply() != null ? intent.reply() : "图片生成完成");
-            default -> routeMessage(fromUserId, userText);
+            default -> routeTextMessage(fromUserId, userText);
         }
     }
 
-    private void routeMessage(String fromUserId, String userText) {
-        Optional<com.example.group_demo.skill.BotSkill> matched = skillRegistry.match(userText);
-        if (matched.isPresent()) {
-            String reply = matched.get().execute(fromUserId, userText);
-            log.info("Skill 命中 userId={} skill={}", fromUserId, matched.get().name());
-            safeSendText(fromUserId, reply);
-            return;
-        }
+    private void routeTextMessage(String fromUserId, String userText) {
+        // 2. RAG 检索增强（命中知识库关键词时增强 Prompt）
         if (ragService.shouldRetrieve(userText)) {
             String augmentedPrompt = ragService.augmentPrompt(
-                "你是微信机器人助手，请用简洁的中文回答问题。", userText);
-            String reply = llmService.chat(fromUserId, userText, augmentedPrompt);
-            log.info("RAG 增强回复 userId={}", fromUserId);
-            safeSendText(fromUserId, reply);
-            return;
+                "你是微信机器人助手，请用简洁的中文回答问题。工具返回的列表内容必须完整逐条展示给用户，不要只做概括。",
+                userText);
+            try {
+                String reply = llmService.chatWithSystem(fromUserId, userText, augmentedPrompt);
+                log.info("RAG 增强回复 userId={}", fromUserId);
+                safeSendText(fromUserId, reply);
+                return;
+            } catch (Exception e) {
+                log.warn("RAG 增强调用失败，回退普通对话", e);
+            }
         }
+        // 3. LLM + Function Calling 兜底
         safeSendText(fromUserId, replyToText(fromUserId, userText));
     }
 
@@ -458,6 +461,14 @@ public class BotService implements ApplicationRunner {
 
     public byte[] getQrPng() {
         return qrPng;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public ILinkClient getClient() {
+        return client;
     }
 
     public boolean isLoggedIn() {
