@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SessionStoreTest {
 
@@ -44,5 +45,22 @@ class SessionStoreTest {
         assertEquals("cursor-1", restored.getUpdatesCursor());
         assertEquals("context-token-1",
             restored.getConversationContextMap().get("friend-1").getLatestContextToken());
+    }
+
+    @Test
+    void persistsKnownUsersForProactiveMessages() {
+        DataSource dataSource = new EmbeddedDatabaseBuilder()
+            .setType(EmbeddedDatabaseType.H2)
+            .build();
+        SessionStore store = new SessionStore(new JdbcTemplate(dataSource));
+
+        store.saveKnownUser("session-1", "friend-1");
+        store.saveKnownUser("session-1", "friend-2");
+
+        assertTrue(store.loadKnownUsers("session-1").contains("friend-1"));
+        assertTrue(store.loadKnownUsers("session-1").contains("friend-2"));
+
+        store.deleteKnownUsers("session-1");
+        assertTrue(store.loadKnownUsers("session-1").isEmpty());
     }
 }

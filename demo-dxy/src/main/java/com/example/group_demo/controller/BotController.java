@@ -2,9 +2,13 @@ package com.example.group_demo.controller;
 
 import com.example.group_demo.bot.BotService;
 import com.example.group_demo.llm.ConversationMemoryService;
+import com.example.group_demo.mcp.McpToolManager;
 import com.example.group_demo.rag.KeywordRagService;
 import com.example.group_demo.rag.KnowledgeChunk;
 import com.example.group_demo.router.MessageRouter;
+import com.example.group_demo.scheduler.ReminderService;
+import com.example.group_demo.scheduler.ReminderTimeParser;
+import com.example.group_demo.scheduler.ScheduledProperties;
 import com.example.group_demo.search.SearchService;
 import com.example.group_demo.session.BotSessionManager;
 import com.example.group_demo.skill.SkillRegistry;
@@ -43,13 +47,17 @@ public class BotController {
     private final MessageRouter messageRouter;
     private final KeywordRagService ragService;
     private final TravelAgentService travelAgentService;
+    private final McpToolManager mcpToolManager;
+    private final ReminderService reminderService;
+    private final ScheduledProperties scheduledProperties;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public BotController(BotSessionManager sessionManager, ConversationMemoryService memoryService,
                          TodoService todoService, SearchService searchService,
                          ToolChainService toolChainService, SkillRegistry skillRegistry,
                          MessageRouter messageRouter, KeywordRagService ragService,
-                         TravelAgentService travelAgentService) {
+                         TravelAgentService travelAgentService, McpToolManager mcpToolManager,
+                         ReminderService reminderService, ScheduledProperties scheduledProperties) {
         this.sessionManager = sessionManager;
         this.memoryService = memoryService;
         this.todoService = todoService;
@@ -59,6 +67,9 @@ public class BotController {
         this.messageRouter = messageRouter;
         this.ragService = ragService;
         this.travelAgentService = travelAgentService;
+        this.mcpToolManager = mcpToolManager;
+        this.reminderService = reminderService;
+        this.scheduledProperties = scheduledProperties;
     }
 
     @PostMapping("/session")
@@ -243,6 +254,91 @@ public class BotController {
         result.put("userId", userId);
         JsonNode chainInput = arguments == null ? null : objectMapper.valueToTree(arguments);
         result.put("result", toolChainService.run(userId, chainId, chainInput));
+        return result;
+    }
+
+    @GetMapping("/mcp/status")
+    public Map<String, Object> mcpStatus() {
+        return mcpToolManager.status();
+    }
+
+    @PostMapping("/mcp/reload")
+    public ResponseEntity<Map<String, Object>> mcpReload() {
+        mcpToolManager.reload();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("reloading", true);
+        return ResponseEntity.accepted().body(result);
+    }
+
+    @GetMapping("/reminders")
+    public List<Map<String, Object>> reminders(@RequestParam(required = false) String userId) {
+        List<ReminderService.Reminder> reminders = (userId == null || userId.isBlank())
+            ? reminderService.listAll()
+            : reminderService.list(userId);
+        return reminders.stream().map(this::toReminderMap).toList();
+    }
+
+    @PostMapping("/reminders")
+    public ResponseEntity<Map<String, Object>> createReminder(@RequestBody Map<String, Object> body) {
+        try {
+            String userId = stringValue(body, "userId", "demo");
+            String content = stringValue(body, "content", "");
+            String scheduleType = stringValue(body, "scheduleType", "once");
+            String time = stringValue(body, "time", "");
+            String cron = stringValue(body, "cron", "");
+            String fireAt = stringValue(body, "fireAt", "");
+            ReminderService.Reminder reminder = reminderService.add(
+                userId,
+                content,
+                scheduleType,
+                time.isBlank() ? null : time,
+                cron.isBlank() ? null : cron,
+                ReminderTimeParser.parse(fireAt)
+            );
+            return ResponseEntity.ok(toReminderMap(reminder));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/reminders/{id}")
+    public ResponseEntity<Map<String, Object>> deleteReminder(
+        @PathVariable long id,
+        @RequestParam(defaultValue = "demo") String userId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("deleted", reminderService.remove(userId, id));
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/scheduled/status")
+    public Map<String, Object> scheduledStatus() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("enabled", scheduledProperties.isEnabled());
+        result.put("dailyNewsCron", scheduledProperties.getDailyNewsCron());
+        result.put("reminderPollMs", scheduledProperties.getReminderPollMs());
+        result.put("timezone", scheduledProperties.getTimezone());
+        result.put("knownUserCount", sessionManager.knownUserCount());
+        return result;
+    }
+
+    private String stringValue(Map<String, Object> body, String key, String defaultValue) {
+        Object value = body == null ? null : body.get(key);
+        return value == null ? defaultValue : String.valueOf(value).trim();
+    }
+
+    private Map<String, Object> toReminderMap(ReminderService.Reminder reminder) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", reminder.id());
+        result.put("userId", reminder.userId());
+        result.put("content", reminder.content());
+        result.put("scheduleType", reminder.scheduleType());
+        result.put("time", reminder.timeValue());
+        result.put("cron", reminder.cronExpr());
+        result.put("fireAt", reminder.fireAt());
+        result.put("nextFireAt", reminder.nextFireAt());
+        result.put("lastFiredAt", reminder.lastFiredAt());
+        result.put("enabled", reminder.enabled());
+        result.put("createdAt", reminder.createdAt());
         return result;
     }
 }

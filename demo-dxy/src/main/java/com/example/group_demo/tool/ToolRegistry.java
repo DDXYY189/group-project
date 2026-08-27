@@ -29,7 +29,7 @@ public class ToolRegistry {
         }
     }
 
-    public void register(BotTool tool) {
+    public synchronized void register(BotTool tool) {
         if (tool == null) {
             return;
         }
@@ -39,15 +39,19 @@ public class ToolRegistry {
         tools.put(tool.name(), tool);
     }
 
-    public List<BotTool> all() {
+    public synchronized BotTool unregister(String name) {
+        return tools.remove(name);
+    }
+
+    public synchronized List<BotTool> all() {
         return List.copyOf(tools.values());
     }
 
-    public List<String> names() {
+    public synchronized List<String> names() {
         return List.copyOf(tools.keySet());
     }
 
-    public BotTool find(String name) {
+    public synchronized BotTool find(String name) {
         return tools.get(name);
     }
 

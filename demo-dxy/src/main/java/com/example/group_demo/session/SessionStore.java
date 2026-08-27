@@ -43,6 +43,13 @@ public class SessionStore {
               updated_at BIGINT NOT NULL
             )
             """);
+        jdbcTemplate.execute("""
+            CREATE TABLE IF NOT EXISTS bot_known_user (
+              session_id VARCHAR(64) NOT NULL,
+              user_id VARCHAR(128) NOT NULL,
+              PRIMARY KEY (session_id, user_id)
+            )
+            """);
     }
 
     public void save(String sessionId, ResumeContext resume) {
@@ -86,6 +93,28 @@ public class SessionStore {
 
     public void delete(String sessionId) {
         jdbcTemplate.update("DELETE FROM bot_session WHERE session_id = ?", sessionId);
+    }
+
+    public void saveKnownUser(String sessionId, String userId) {
+        if (sessionId == null || userId == null) {
+            return;
+        }
+        jdbcTemplate.update("""
+            MERGE INTO bot_known_user (session_id, user_id) KEY(session_id, user_id)
+            VALUES (?, ?)
+            """, sessionId, userId);
+    }
+
+    public List<String> loadKnownUsers(String sessionId) {
+        return jdbcTemplate.queryForList(
+            "SELECT user_id FROM bot_known_user WHERE session_id = ? ORDER BY user_id",
+            String.class,
+            sessionId
+        );
+    }
+
+    public void deleteKnownUsers(String sessionId) {
+        jdbcTemplate.update("DELETE FROM bot_known_user WHERE session_id = ?", sessionId);
     }
 
     public ResumeContext toResumeContext(StoredSession stored) {

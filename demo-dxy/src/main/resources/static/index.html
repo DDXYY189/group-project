@@ -1033,6 +1033,160 @@
                 width: 100%;
             }
         }
+
+        .reminder-panel,
+        .mcp-panel {
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .reminder-form {
+            display: grid;
+            grid-template-columns: minmax(90px, 0.8fr) minmax(140px, 1.5fr) minmax(90px, 0.8fr) minmax(130px, 1.2fr) minmax(110px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .reminder-form .field-row {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .reminder-form .field-row label {
+            min-width: 0;
+        }
+
+        .reminder-list {
+            margin-top: 14px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .reminder-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        .reminder-main {
+            min-width: 0;
+        }
+
+        .reminder-title {
+            font-size: 13px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .reminder-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .reminder-empty {
+            padding: 12px;
+            border: 1px dashed var(--line);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .mcp-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .mcp-server {
+            min-width: 0;
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .mcp-server-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .mcp-server-name {
+            margin: 0;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .mcp-server-meta {
+            margin: 4px 0 0;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .mcp-tools-label {
+            display: block;
+            margin: 12px 0 8px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .mcp-tool-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .mcp-tool-chip {
+            display: inline-flex;
+            align-items: center;
+            height: 26px;
+            padding: 0 10px;
+            border: 1px solid #b8d7c9;
+            border-radius: 999px;
+            background: var(--brand-soft);
+            color: #0b5d57;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .mcp-empty {
+            padding: 14px;
+            border: 1px dashed var(--line);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        @media (max-width: 760px) {
+            .reminder-form,
+            .mcp-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .reminder-item {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
     </style>
     <style id="tech-theme">
         :root {
@@ -1513,6 +1667,81 @@
             <div class="chain-grid" id="chainGrid"></div>
         </section>
 
+        <section class="section" aria-label="MCP 能力">
+            <div class="section-head">
+                <h2>MCP 能力</h2>
+                <div class="section-actions">
+                    <span class="chain-state idle" id="mcpState">加载中</span>
+                    <button type="button" class="icon-btn" id="mcpReloadBtn" title="重新连接 MCP 服务" onclick="loadMcp(true)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                            <path d="M21 3v6h-6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="mcp-panel">
+                <div class="mcp-grid" id="mcpGrid"></div>
+                <span class="mcp-tools-label">已接入 MCP 工具</span>
+                <div class="mcp-tool-list" id="mcpToolChips"></div>
+            </div>
+        </section>
+
+        <section class="section" aria-label="定时任务">
+            <div class="section-head">
+                <h2>定时任务</h2>
+                <div class="section-actions">
+                    <span class="section-meta" id="schedulerMeta">加载中</span>
+                    <button type="button" class="icon-btn" id="reminderReloadBtn" title="重新加载定时任务" onclick="loadReminders()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                            <path d="M21 3v6h-6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="reminder-panel">
+                <div class="reminder-form">
+                    <div class="field-row">
+                        <label>用户 ID</label>
+                        <input class="input" id="reminderUserId" type="text" value="demo" autocomplete="off">
+                    </div>
+                    <div class="field-row">
+                        <label>提醒内容</label>
+                        <input class="input" id="reminderContent" type="text" placeholder="明天 9 点开会" autocomplete="off">
+                    </div>
+                    <div class="field-row">
+                        <label>类型</label>
+                        <select class="input" id="reminderType" onchange="updateReminderFields()">
+                            <option value="once">一次性</option>
+                            <option value="daily">每天</option>
+                            <option value="cron">Cron</option>
+                        </select>
+                    </div>
+                    <div class="field-row" id="reminderTimeRow" hidden>
+                        <label>每天时间</label>
+                        <input class="input" id="reminderTime" type="time">
+                    </div>
+                    <div class="field-row" id="reminderCronRow" hidden>
+                        <label>Cron</label>
+                        <input class="input" id="reminderCron" type="text" placeholder="0 0 9 * * *">
+                    </div>
+                    <div class="field-row" id="reminderFireRow">
+                        <label>触发时间</label>
+                        <input class="input" id="reminderFireAt" type="datetime-local">
+                    </div>
+                    <button type="button" class="search-btn" id="reminderCreateBtn" onclick="createReminder()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 5v14"/>
+                            <path d="M5 12h14"/>
+                        </svg>
+                        <span>创建</span>
+                    </button>
+                </div>
+                <div class="reminder-list" id="reminderList"></div>
+            </div>
+        </section>
+
         <section class="section" aria-label="对话测试">
             <div class="section-head">
                 <h2>对话测试</h2>
@@ -1603,6 +1832,7 @@
         analyze_sentiment: "情感分析",
         generate_random: "随机数",
         lookup_word: "单词查询",
+        manage_reminder: "定时提醒",
         weather_to_todo: "天气转待办",
         hot_news_to_todo: "热点转待办"
     };
@@ -1621,6 +1851,7 @@
         dice: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/><path d="M12 12h.01"/>',
         book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
         clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
         route: '<circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H12"/>',
         refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
         trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
@@ -1643,6 +1874,7 @@
         { id: "cap-random", kind: "tool", tool: "generate_random", label: "随机数", desc: "抽签、掷骰子、随机整数", icon: "dice" },
         { id: "cap-word", kind: "tool", tool: "lookup_word", label: "单词查询", desc: "英文单词中文释义", icon: "book" },
         { id: "cap-time", kind: "tool", tool: "get_current_time", label: "当前时间", desc: "日期、时间与星期", icon: "clock" },
+        { id: "cap-reminder", kind: "tool", tool: "manage_reminder", label: "定时提醒", desc: "一次性、每天或 Cron 定时提醒", icon: "bell" },
         {
             id: "cap-chain",
             kind: "chain",
@@ -1678,6 +1910,7 @@
         { tag: "时间", text: "现在几点了？" },
         { tag: "语音", text: "用语音回复我：明天见" },
         { tag: "图片", text: "帮我画一张夕阳下的城市剪影" },
+        { tag: "提醒", text: "提醒我明天早上 9 点开会" },
         { tag: "记忆", text: "忘记我们之前聊过的所有内容" }
     ];
 
@@ -1685,6 +1918,8 @@
     let loggedIn = false;
     let sessionId = localStorage.getItem("ilinkSessionId") || "";
     let chainLoading = false;
+    let mcpLoading = false;
+    let reminderLoading = false;
 
     function escapeHtml(value) {
         return String(value ?? "").replace(/[&<>"']/g, (c) => ({
@@ -1725,11 +1960,251 @@
         tools.forEach((name) => {
             const chip = document.createElement("span");
             chip.className = "chip";
-            chip.textContent = TOOL_LABELS[name] || name;
+            if (name.startsWith("mcp_")) {
+                chip.textContent = "MCP " + (TOOL_LABELS[name] || name.slice(4));
+            } else {
+                chip.textContent = TOOL_LABELS[name] || name;
+            }
             chip.title = name;
             box.appendChild(chip);
         });
         $("toolCount").textContent = tools.length + " 个工具";
+    }
+
+    function updateReminderFields() {
+        const type = $("reminderType").value;
+        $("reminderTimeRow").hidden = type !== "daily";
+        $("reminderCronRow").hidden = type !== "cron";
+        $("reminderFireRow").hidden = type !== "once";
+    }
+
+    function formatTimestamp(ms) {
+        if (!ms) return "--";
+        return new Date(ms).toLocaleString("zh-CN", { hour12: false });
+    }
+
+    function scheduleLabel(type, item) {
+        if (type === "daily") return "每天 " + (item.time || "--");
+        if (type === "cron") return "Cron " + (item.cron || "--");
+        return "一次性";
+    }
+
+    async function loadMcp(forceReload) {
+        if (mcpLoading) return;
+        mcpLoading = true;
+        const state = $("mcpState");
+        state.textContent = forceReload ? "重连中" : "加载中";
+        state.className = "chain-state running";
+        try {
+            if (forceReload) {
+                await fetch("/api/bot/mcp/reload", { method: "POST" });
+            }
+            const response = await fetch("/api/bot/mcp/status", { cache: "no-store" });
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            renderMcp(await response.json());
+        } catch (e) {
+            $("mcpGrid").innerHTML = '<div class="mcp-empty">MCP 接口暂不可用：'
+                + escapeHtml(e.message) + "</div>";
+            $("mcpToolChips").innerHTML = "";
+            state.textContent = "不可用";
+            state.className = "chain-state err";
+        } finally {
+            mcpLoading = false;
+        }
+    }
+
+    function renderMcp(data) {
+        const servers = Array.isArray(data.servers) ? data.servers : [];
+        const tools = Array.isArray(data.tools) ? data.tools : [];
+        const grid = $("mcpGrid");
+        const chips = $("mcpToolChips");
+        const state = $("mcpState");
+        grid.innerHTML = "";
+        chips.innerHTML = "";
+        if (!data.enabled) {
+            grid.innerHTML = '<div class="mcp-empty">MCP 客户端已关闭，可在 application.properties 中开启。</div>';
+            state.textContent = "已关闭";
+            state.className = "chain-state idle";
+            return;
+        }
+        if (servers.length === 0) {
+            grid.innerHTML = '<div class="mcp-empty">当前未配置 MCP Server。可在 application.properties 的 mcp.servers 下添加 stdio 或 HTTP 服务。</div>';
+            state.textContent = "0 个服务";
+            state.className = "chain-state idle";
+        } else {
+            servers.forEach((server) => {
+                const card = document.createElement("div");
+                card.className = "mcp-server";
+                const connected = !!server.connected;
+                card.innerHTML =
+                    '<div class="mcp-server-head">' +
+                    "<div>" +
+                    '<h3 class="mcp-server-name">' + escapeHtml(server.name) + "</h3>" +
+                    '<p class="mcp-server-meta">' + escapeHtml(server.type || "") + " · "
+                    + (server.toolCount || 0) + " 个工具</p>" +
+                    "</div>" +
+                    '<span class="chain-state ' + (connected ? "ok" : "err") + '">'
+                    + (connected ? "已连接" : "失败") + "</span>" +
+                    "</div>" +
+                    (server.error && !connected
+                        ? '<p class="mcp-server-meta" style="margin-top:8px;">' + escapeHtml(server.error) + "</p>"
+                        : "");
+                grid.appendChild(card);
+            });
+            state.textContent = servers.length + " 个服务";
+            state.className = "chain-state " + (servers.some((s) => !s.connected) ? "err" : "ok");
+        }
+        if (tools.length === 0) {
+            chips.innerHTML = '<span class="mcp-tool-chip">暂无工具</span>';
+        } else {
+            tools.forEach((tool) => {
+                const chip = document.createElement("span");
+                chip.className = "mcp-tool-chip";
+                chip.textContent = "MCP " + tool.registeredName.replace(/^mcp_[^_]+_/, "");
+                chip.title = tool.registeredName + "\n" + (tool.description || "");
+                chips.appendChild(chip);
+            });
+        }
+    }
+
+    async function loadReminders() {
+        if (reminderLoading) return;
+        reminderLoading = true;
+        try {
+            const [reminderResponse, statusResponse] = await Promise.all([
+                fetch("/api/bot/reminders", { cache: "no-store" }),
+                fetch("/api/bot/scheduled/status", { cache: "no-store" })
+            ]);
+            if (!reminderResponse.ok) {
+                throw new Error("HTTP " + reminderResponse.status);
+            }
+            const reminders = await reminderResponse.json();
+            renderReminders(reminders);
+            if (statusResponse.ok) {
+                const status = await statusResponse.json();
+                $("schedulerMeta").textContent = (status.enabled ? "已启用" : "已停用")
+                    + " · 已知用户 " + (status.knownUserCount || 0)
+                    + " · 每日推送 " + (status.dailyNewsCron || "--");
+            } else {
+                $("schedulerMeta").textContent = "调度状态不可用";
+            }
+        } catch (e) {
+            $("reminderList").innerHTML = '<div class="reminder-empty">定时任务接口暂不可用：'
+                + escapeHtml(e.message) + "</div>";
+            $("schedulerMeta").textContent = "不可用";
+        } finally {
+            reminderLoading = false;
+        }
+    }
+
+    function renderReminders(reminders) {
+        const box = $("reminderList");
+        box.innerHTML = "";
+        if (!Array.isArray(reminders) || reminders.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "reminder-empty";
+            empty.textContent = "暂无定时任务，创建后会显示在这里";
+            box.appendChild(empty);
+            return;
+        }
+        reminders.forEach((item) => {
+            const row = document.createElement("div");
+            row.className = "reminder-item";
+            row.dataset.userId = item.userId || "demo";
+            row.innerHTML =
+                '<div class="reminder-main">' +
+                '<div class="reminder-title">' + escapeHtml(item.content) + "</div>" +
+                '<div class="reminder-meta">' +
+                "<span>#" + item.id + "</span>" +
+                "<span>" + escapeHtml(item.userId || "") + "</span>" +
+                "<span>" + escapeHtml(scheduleLabel(item.scheduleType, item)) + "</span>" +
+                "<span>下次 " + formatTimestamp(item.nextFireAt) + "</span>" +
+                "<span>" + (item.enabled ? "已启用" : "已停用") + "</span>" +
+                "</div>" +
+                "</div>" +
+                '<button type="button" class="copy-btn reminder-delete" title="删除提醒">'
+                + iconSvg("trash") + "<span>删除</span></button>";
+            row.querySelector(".reminder-delete")
+                .addEventListener("click", () => deleteReminder(item.id, row));
+            box.appendChild(row);
+        });
+    }
+
+    async function createReminder() {
+        const type = $("reminderType").value;
+        const content = $("reminderContent").value.trim();
+        const userId = $("reminderUserId").value.trim() || "demo";
+        if (!content) {
+            alert("请填写提醒内容");
+            return;
+        }
+        const body = { userId: userId, content: content, scheduleType: type };
+        if (type === "once") {
+            const fireAt = $("reminderFireAt").value;
+            if (!fireAt) {
+                alert("请选择触发时间");
+                return;
+            }
+            body.fireAt = fireAt;
+        } else if (type === "daily") {
+            const time = $("reminderTime").value;
+            if (!time) {
+                alert("请选择每天提醒时间");
+                return;
+            }
+            body.time = time;
+        } else {
+            const cron = $("reminderCron").value.trim();
+            if (!cron) {
+                alert("请填写 Cron 表达式");
+                return;
+            }
+            body.cron = cron;
+        }
+        const button = $("reminderCreateBtn");
+        button.disabled = true;
+        button.querySelector("span").textContent = "创建中";
+        try {
+            const response = await fetch("/api/bot/reminders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error || "HTTP " + response.status);
+            }
+            $("reminderContent").value = "";
+            $("reminderFireAt").value = "";
+            $("reminderTime").value = "";
+            $("reminderCron").value = "";
+            await loadReminders();
+        } catch (e) {
+            alert("创建定时任务失败：" + e.message);
+        } finally {
+            button.disabled = false;
+            button.querySelector("span").textContent = "创建";
+        }
+    }
+
+    async function deleteReminder(id, row) {
+        if (!confirm("确定删除这条定时提醒吗？")) {
+            return;
+        }
+        try {
+            const userId = row.dataset.userId || "demo";
+            const response = await fetch("/api/bot/reminders/" + id + "?userId=" + encodeURIComponent(userId), {
+                method: "DELETE"
+            });
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            await loadReminders();
+        } catch (e) {
+            alert("删除定时任务失败：" + e.message);
+        }
     }
 
     function ensureCapabilityCards() {
@@ -2236,6 +2711,9 @@
     ensureCapabilityCards();
     renderPrompts();
     loadChains();
+    updateReminderFields();
+    loadMcp();
+    loadReminders();
 
     $("qr").addEventListener("error", () => {
         $("qrHint").textContent = "二维码加载失败，请确认服务已启动";

@@ -15,6 +15,7 @@ import com.github.wechat.ilink.sdk.core.config.ILinkConfig;
 import com.github.wechat.ilink.sdk.core.context.ResumeContext;
 import com.github.wechat.ilink.sdk.core.listener.OnLoginListener;
 import com.github.wechat.ilink.sdk.core.login.LoginContext;
+import com.github.wechat.ilink.sdk.core.model.WeixinMessage;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -22,7 +23,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -35,6 +39,7 @@ public class BotSessionManager {
     private static final Logger log = LoggerFactory.getLogger(BotSessionManager.class);
 
     private final ConcurrentHashMap<String, BotService> sessions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Set<String>> knownUsers = new ConcurrentHashMap<>();
     private final ExecutorService loginPool = Executors.newFixedThreadPool(4, runnable -> {
         Thread thread = new Thread(runnable, "bot-login");
         thread.setDaemon(true);
@@ -79,6 +84,9 @@ public class BotSessionManager {
                 }
                 BotService bot = createBot(item.sessionId(), resume);
                 sessions.put(item.sessionId(), bot);
+                Set<String> users = ConcurrentHashMap.newKeySet();
+                users.addAll(sessionStore.loadKnownUsers(item.sessionId()));
+                knownUsers.put(item.sessionId(), users);
                 log.info("已恢复登录会话 sessionId={} botId={}",
                     item.sessionId(), bot.getLoginContext() == null ? "?" : bot.getLoginContext().getBotId());
             } catch (Exception e) {
@@ -92,6 +100,7 @@ public class BotSessionManager {
         String sessionId = UUID.randomUUID().toString().replace("-", "");
         BotService bot = createBot(sessionId, null);
         sessions.put(sessionId, bot);
+        knownUsers.put(sessionId, ConcurrentHashMap.newKeySet());
         loginPool.submit(bot::startLogin);
         log.info("已创建会话 sessionId={}", sessionId);
         return bot;
@@ -121,8 +130,48 @@ public class BotSessionManager {
         }
         bot.getClient().close();
         sessionStore.delete(sessionId);
+        sessionStore.deleteKnownUsers(sessionId);
+        knownUsers.remove(sessionId);
         log.info("已关闭会话 sessionId={}", sessionId);
         return true;
+    }
+
+    public int sendToUser(String userId, String text) {
+        if (userId == null || userId.isBlank()) {
+            return 0;
+        }
+        int sent = 0;
+        for (Map.Entry<String, Set<String>> entry : knownUsers.entrySet()) {
+            if (!entry.getValue().contains(userId)) {
+                continue;
+            }
+            BotService bot = sessions.get(entry.getKey());
+            if (bot != null && bot.isLoggedIn()) {
+                bot.sendTextToUser(userId, text);
+                sent++;
+            }
+        }
+        return sent;
+    }
+
+    public int sendToAllKnownUsers(String text) {
+        Set<String> users = new HashSet<>();
+        for (Set<String> userSet : knownUsers.values()) {
+            users.addAll(userSet);
+        }
+        int sent = 0;
+        for (String userId : users) {
+            sent += sendToUser(userId, text);
+        }
+        return sent;
+    }
+
+    public int knownUserCount() {
+        Set<String> users = new HashSet<>();
+        for (Set<String> userSet : knownUsers.values()) {
+            users.addAll(userSet);
+        }
+        return users.size();
     }
 
     private BotService createBot(String sessionId, ResumeContext resumeContext) {
@@ -155,6 +204,7 @@ public class BotSessionManager {
             .onMessage(messages -> {
                 BotService bot = botRef.get();
                 if (bot != null) {
+                    recordKnownUsers(sessionId, messages);
                     bot.onMessages(messages);
                 }
             });
@@ -168,10 +218,26 @@ public class BotSessionManager {
         return bot;
     }
 
+    private void recordKnownUsers(String sessionId, List<WeixinMessage> messages) {
+        if (messages == null) {
+            return;
+        }
+        Set<String> users = knownUsers.computeIfAbsent(sessionId, key -> ConcurrentHashMap.newKeySet());
+        for (WeixinMessage message : messages) {
+            if (message == null || message.getFrom_user_id() == null) {
+                continue;
+            }
+            if (users.add(message.getFrom_user_id())) {
+                sessionStore.saveKnownUser(sessionId, message.getFrom_user_id());
+            }
+        }
+    }
+
     @PreDestroy
     public void closeAll() {
         sessions.values().forEach(bot -> bot.getClient().close());
         sessions.clear();
+        knownUsers.clear();
         loginPool.shutdownNow();
     }
 }

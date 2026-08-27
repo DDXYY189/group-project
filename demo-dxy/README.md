@@ -47,6 +47,62 @@ mvn spring-boot:run
 
 已内置工具：天气查询、待办管理、当前时间、联网搜索、翻译、随机数、查单词、热点资讯、清除记忆。对话记忆支持长时摘要与 TTL 过期。
 
+## MCP 能力接入
+
+项目已接入官方 Java MCP SDK，支持通过 `application.properties` 配置 stdio、SSE 和 Streamable HTTP 三类 MCP Server。远程工具会自动注册成 `mcp_<server>_<tool>` 形式的本地工具，微信对话中可直接调用。
+
+```properties
+mcp.enabled=true
+# mcp.servers.everything.type=stdio
+# mcp.servers.everything.command=npx
+# mcp.servers.everything.args=-y,@modelcontextprotocol/server-everything
+```
+
+调试接口：
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/bot/mcp/status
+Invoke-RestMethod -Method Post http://localhost:8080/api/bot/mcp/reload
+```
+
+协议说明见 [docs/mcp.md](docs/mcp.md)。
+
+## 定时任务与提醒
+
+内置两类定时任务：
+
+- 每日热点推送：按 `scheduler.daily-news-cron` 定时向联系过机器人的用户推送新闻
+- 用户自定义提醒：支持一次性、每天、Cron 三种类型，H2 持久化，机器人会主动发送到微信
+
+微信里可以直接说“提醒我明天早上 9 点开会”，模型会调用 `manage_reminder` 工具创建提醒。
+
+控制台已增加“定时任务”面板，可创建、查看、删除提醒。
+
+配置项：
+
+- `scheduler.enabled`：总开关，默认 `true`
+- `scheduler.daily-news-cron`：每日新闻 Cron，默认 `0 30 8 * * *`
+- `scheduler.reminder-poll-ms`：提醒扫描间隔，默认 `15000`
+- `scheduler.timezone`：时区，默认 `Asia/Shanghai`
+
+调试接口：
+
+```powershell
+# 查看调度状态
+Invoke-RestMethod http://localhost:8080/api/bot/scheduled/status
+
+# 查看全部提醒
+Invoke-RestMethod http://localhost:8080/api/bot/reminders
+
+# 创建一次性提醒
+Invoke-RestMethod -Method Post -ContentType "application/json" `
+  -Body '{"userId":"demo","content":"明天开会","scheduleType":"once","fireAt":"2026-08-27 09:00"}' `
+  http://localhost:8080/api/bot/reminders
+
+# 删除提醒
+Invoke-RestMethod -Method Delete "http://localhost:8080/api/bot/reminders/1?userId=demo"
+```
+
 ## Skill 路由
 
 新增 `skill` 包与 `router` 包，文本消息统一走 `MessageRouter`：

@@ -371,6 +371,10 @@ public class BotService {
         }
     }
 
+    public void sendTextToUser(String toUserId, String text) {
+        safeSendText(toUserId, text);
+    }
+
     private String detectAudioSuffix(byte[] bytes) {
         if (bytes.length >= 8 && new String(bytes, 0, 8, StandardCharsets.US_ASCII).startsWith("#!AMR")) {
             return ".amr";
