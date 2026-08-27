@@ -53,4 +53,13 @@ class KeywordRagServiceTest {
         assertTrue(prompt.contains("参考资料"));
         assertTrue(prompt.contains("11 月 18 日"));
     }
+
+    @Test
+    void retrievesComputerScienceWeeklyScheduleFromClasspath() {
+        KeywordRagService service = new KeywordRagService(new RagProperties());
+        List<KnowledgeChunk> hits = service.retrieve("计算机专业大二下周课表 数据结构 Java程序设计");
+        assertFalse(hits.isEmpty());
+        assertTrue(hits.stream().anyMatch(chunk -> "weekly-plan".equals(chunk.title())));
+        assertTrue(hits.stream().anyMatch(chunk -> chunk.content().contains("数据结构")));
+    }
 }
