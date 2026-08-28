@@ -34,7 +34,7 @@ public class TravelSkill implements Skill {
     public List<String> keywords() {
         return List.of(
             "旅游", "旅行", "攻略", "行程", "出去玩", "周末去哪", "去哪玩",
-            "度假", "景点", "出行", "旅游计划", "旅行计划"
+            "度假", "景点", "出行", "旅游计划", "旅行计划", "日游", "游玩", "出游"
         );
     }
 

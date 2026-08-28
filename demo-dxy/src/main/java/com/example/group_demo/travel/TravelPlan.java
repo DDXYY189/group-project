@@ -16,13 +16,17 @@ public record TravelPlan(
         List<DayPlan> itinerary,
         List<String> tips,
         List<String> mustDos,
-        String heroPrompt) {
+        String heroPrompt,
+        List<HotelRecommendation> hotels,
+        List<RestaurantRecommendation> restaurants) {
 
     public TravelPlan {
         dates = dates == null ? List.of() : List.copyOf(dates);
         itinerary = itinerary == null ? List.of() : List.copyOf(itinerary);
         tips = tips == null ? List.of() : List.copyOf(tips);
         mustDos = mustDos == null ? List.of() : List.copyOf(mustDos);
+        hotels = hotels == null ? List.of() : List.copyOf(hotels);
+        restaurants = restaurants == null ? List.of() : List.copyOf(restaurants);
     }
 
     public static TravelPlan fromJson(JsonNode node) {
@@ -44,7 +48,37 @@ public record TravelPlan(
                 itinerary,
                 TravelJsonParser.textList(node.get("tips")),
                 TravelJsonParser.textList(node.get("mustDos")),
-                TravelJsonParser.text(node, "heroPrompt"));
+                TravelJsonParser.text(node, "heroPrompt"),
+                parseHotels(node.get("hotels")),
+                parseRestaurants(node.get("restaurants")));
+    }
+
+    public TravelPlan withRecommendations(List<HotelRecommendation> hotelItems,
+                                          List<RestaurantRecommendation> restaurantItems) {
+        return new TravelPlan(destination, days, dates, budget, itinerary, tips, mustDos,
+            heroPrompt,
+            hotelItems == null ? hotels : hotelItems,
+            restaurantItems == null ? restaurants : restaurantItems);
+    }
+
+    private static List<HotelRecommendation> parseHotels(JsonNode node) {
+        List<HotelRecommendation> result = new ArrayList<>();
+        if (node != null && node.isArray()) {
+            for (JsonNode item : node) {
+                result.add(HotelRecommendation.fromJson(item));
+            }
+        }
+        return result;
+    }
+
+    private static List<RestaurantRecommendation> parseRestaurants(JsonNode node) {
+        List<RestaurantRecommendation> result = new ArrayList<>();
+        if (node != null && node.isArray()) {
+            for (JsonNode item : node) {
+                result.add(RestaurantRecommendation.fromJson(item));
+            }
+        }
+        return result;
     }
 
     public record Budget(String total, List<BudgetItem> items) {
@@ -108,5 +142,59 @@ public record TravelPlan(
     }
 
     public record TimeSlot(String time, String item) {
+    }
+
+    public record HotelRecommendation(
+            String name,
+            String address,
+            String price,
+            String rating,
+            String imageUrl,
+            String detailUrl,
+            List<String> tags,
+            String distance) {
+
+        public HotelRecommendation {
+            tags = tags == null ? List.of() : List.copyOf(tags);
+        }
+
+        public static HotelRecommendation fromJson(JsonNode node) {
+            return new HotelRecommendation(
+                TravelJsonParser.text(node, "name"),
+                TravelJsonParser.text(node, "address"),
+                TravelJsonParser.text(node, "price"),
+                TravelJsonParser.text(node, "rating"),
+                TravelJsonParser.text(node, "imageUrl"),
+                TravelJsonParser.text(node, "detailUrl"),
+                TravelJsonParser.textList(node == null ? null : node.get("tags")),
+                TravelJsonParser.text(node, "distance"));
+        }
+    }
+
+    public record RestaurantRecommendation(
+            String name,
+            String address,
+            String avgPrice,
+            String rating,
+            String imageUrl,
+            String detailUrl,
+            List<String> tags,
+            String distance) {
+
+        public RestaurantRecommendation {
+            tags = tags == null ? List.of() : List.copyOf(tags);
+        }
+
+        public static RestaurantRecommendation fromJson(JsonNode node) {
+            return new RestaurantRecommendation(
+                TravelJsonParser.text(node, "name"),
+                TravelJsonParser.text(node, "address"),
+                TravelJsonParser.text(node, "avgPrice"),
+                TravelJsonParser.text(node, "rating"),
+                TravelJsonParser.text(node, "imageUrl"),
+                TravelJsonParser.text(node, "detailUrl"),
+                TravelJsonParser.textList(node == null ? null : node.get("tags")),
+                TravelJsonParser.text(node, "distance"));
+        }
     }
 }

@@ -32,7 +32,7 @@ public class PlanSkill implements Skill {
 
     @Override
     public List<String> keywords() {
-        return List.of("制定计划", "学习计划", "周计划", "一周安排", "下周安排", "规划一下", "帮我规划");
+        return List.of("制定计划", "学习计划", "周计划", "一周安排", "下周安排");
     }
 
     @Override

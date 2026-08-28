@@ -138,6 +138,12 @@ public class TravelAgentService {
             }
             steps.add("生成结构化行程方案：" + plan.itinerary().size() + " 天行程");
 
+            List<TravelPlan.HotelRecommendation> hotels = fetchHotels(userId, request);
+            steps.add("查询美团酒店推荐：" + (hotels.isEmpty() ? "无结果" : hotels.size() + " 家"));
+            List<TravelPlan.RestaurantRecommendation> restaurants = fetchRestaurants(userId, request);
+            steps.add("查询美团美食推荐：" + (restaurants.isEmpty() ? "无结果" : restaurants.size() + " 家"));
+            plan = plan.withRecommendations(hotels, restaurants);
+
             String pageId = "trip-" + System.currentTimeMillis() + "-"
                 + UUID.randomUUID().toString().substring(0, 6);
             boolean imageGenerated = tryGenerateImage(plan, pageId);
@@ -220,6 +226,62 @@ public class TravelAgentService {
         node.put("query", query);
         node.put("max_results", 6);
         return node.toString();
+    }
+
+    private List<TravelPlan.HotelRecommendation> fetchHotels(String userId, TravelRequest request) {
+        ObjectNode args = objectMapper.createObjectNode();
+        args.put("city", request.destination());
+        args.put("check_in", "");
+        args.put("check_out", "");
+        args.put("budget", orUnknown(request.budget()));
+        return parseHotels(safeTool(userId, "search_hotels", args.toString()));
+    }
+
+    private List<TravelPlan.RestaurantRecommendation> fetchRestaurants(String userId,
+                                                                       TravelRequest request) {
+        ObjectNode args = objectMapper.createObjectNode();
+        args.put("city", request.destination());
+        args.put("cuisine", orUnknown(request.preferences()));
+        args.put("budget", orUnknown(request.budget()));
+        return parseRestaurants(safeTool(userId, "search_restaurants", args.toString()));
+    }
+
+    private List<TravelPlan.HotelRecommendation> parseHotels(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            JsonNode node = objectMapper.readTree(json).path("hotels");
+            List<TravelPlan.HotelRecommendation> result = new ArrayList<>();
+            if (node.isArray()) {
+                for (JsonNode item : node) {
+                    result.add(TravelPlan.HotelRecommendation.fromJson(item));
+                }
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("美团酒店推荐解析失败", e);
+            return List.of();
+        }
+    }
+
+    private List<TravelPlan.RestaurantRecommendation> parseRestaurants(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            JsonNode node = objectMapper.readTree(json).path("restaurants");
+            List<TravelPlan.RestaurantRecommendation> result = new ArrayList<>();
+            if (node.isArray()) {
+                for (JsonNode item : node) {
+                    result.add(TravelPlan.RestaurantRecommendation.fromJson(item));
+                }
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("美团美食推荐解析失败", e);
+            return List.of();
+        }
     }
 
     private boolean tryGenerateImage(TravelPlan plan, String pageId) {

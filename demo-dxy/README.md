@@ -228,3 +228,22 @@ Invoke-WebRequest "http://localhost:8080/api/trips/<pageId>.html"
 - `travel.page-base-url`：网页链接前缀，默认 `http://localhost:8080/api/trips`
 - `travel.generate-image`：是否生成封面图，默认 `true`
 - `travel.generate-voice`：是否生成语音摘要，默认 `true`
+
+## 美团酒店/美食推荐
+
+旅行 Agent 生成结构化行程后，会调用美团开放平台获取真实门店推荐：
+
+- `search_hotels`：查询目的地酒店推荐
+- `search_restaurants`：查询目的地美食推荐
+
+推荐结果以卡片形式渲染进旅行网页的“住宿与美食推荐”区块，包含名称、地址、价格、评分、标签、距离和详情链接。任一接口失败不会中断 Agent，页面会自动隐藏对应区块。
+
+配置项（`application.properties`）：
+
+- `meituan.enabled`：总开关，默认 `true`
+- `meituan.mock-enabled`：未配置真实凭证时使用示例数据演示页面效果，默认 `true`；接入真实接口后改为 `false`
+- `meituan.app-key` / `meituan.secret` / `meituan.auth-token`：美团开放平台凭证
+- `meituan.base-url` / `meituan.hotel-endpoint` / `meituan.food-endpoint`：按申请到的接口文档填写
+- `meituan.cache-ttl-seconds`：按“城市 + 预算”缓存推荐结果，默认 `3600` 秒
+
+美团接口的签名与返回字段因接口而异，拿到文档后只需调整 `MeituanClient` 里的签名方法和字段映射即可。

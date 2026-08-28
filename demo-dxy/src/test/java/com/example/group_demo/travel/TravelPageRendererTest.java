@@ -61,4 +61,39 @@ class TravelPageRendererTest {
         assertTrue(html.contains("成都 1 日游"));
         assertFalse(html.contains("<audio"));
     }
+
+    @Test
+    void rendersMeituanRecommendations() throws Exception {
+        JsonNode json = objectMapper.readTree("""
+            {
+              "destination": "上海",
+              "days": 2,
+              "dates": ["4月1日", "4月2日"],
+              "itinerary": [
+                {"day": 1, "title": "外滩", "schedule": [{"time": "09:00", "item": "抵达"}]}
+              ],
+              "hotels": [
+                {"name": "<b>外滩</b>精选酒店", "address": "南京东路", "price": "458元/晚",
+                 "rating": "4.8", "imageUrl": "https://p.meituan.net/h.jpg",
+                 "detailUrl": "https://www.meituan.com/hotel/1", "tags": ["市中心", "免费停车"],
+                 "distance": "距外滩500m"}
+              ],
+              "restaurants": [
+                {"name": "本帮菜馆", "address": "城隍庙", "avgPrice": "88元/人",
+                 "rating": "4.7", "detailUrl": "https://www.meituan.com/rest/1",
+                 "tags": ["本帮菜"], "distance": "距外滩1km"}
+              ]
+            }
+            """);
+        String html = new TravelPageRenderer().render(TravelPlan.fromJson(json), "trip-demo", null, null);
+
+        assertTrue(html.contains("住宿与美食推荐"));
+        assertTrue(html.contains("&lt;b&gt;外滩&lt;/b&gt;精选酒店"));
+        assertTrue(html.contains("458元/晚"));
+        assertTrue(html.contains("88元/人"));
+        assertTrue(html.contains("评分 4.8"));
+        assertTrue(html.contains("https://www.meituan.com/hotel/1"));
+        assertTrue(html.contains("https://p.meituan.net/h.jpg"));
+        assertFalse(html.contains("<b>外滩</b>精选酒店"));
+    }
 }

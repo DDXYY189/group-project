@@ -124,6 +124,25 @@ class MessageRouterTest {
     }
 
     @Test
+    void routesNaturalTravelPromptToLongTaskAgent() {
+        TravelSkill travel = new TravelSkill(new TravelAgentService(
+            null, null, null, null, null, null, null) {
+            @Override
+            public TravelAgentResult run(String userId, String goal) {
+                return TravelAgentResult.error("agent:" + goal);
+            }
+        });
+        MessageRouter router = new MessageRouter(
+            new SkillRegistry(List.of(travel)), newLlm(new ToolRegistry(List.of())), disabledRag());
+
+        String reply = router.route("u1",
+            "预算5000，帮我规划4月1-3号上海3日游，两个人，喜欢美食和夜景");
+
+        assertTrue(reply.contains("agent:预算5000，帮我规划4月1-3号上海3日游"));
+        assertTrue(requests.isEmpty());
+    }
+
+    @Test
     void fallsBackToNormalChatWithAllToolsWhenNoSkillMatches() throws Exception {
         ToolRegistry tools = new ToolRegistry(List.of(
             tool("web_search"), tool("query_weather"), tool("manage_todo"),

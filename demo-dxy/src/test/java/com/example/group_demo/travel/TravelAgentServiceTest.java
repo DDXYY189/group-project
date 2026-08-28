@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -125,7 +126,7 @@ class TravelAgentServiceTest {
         LlmService llmService = new LlmService(llmProperties, null);
 
         ToolRegistry registry = new ToolRegistry(List.of(
-            weatherTool(), searchTool(), todoTool()));
+            weatherTool(), searchTool(), todoTool(), hotelTool(), restaurantTool()));
 
         RagProperties ragProperties = new RagProperties();
         ragProperties.setEnabled(true);
@@ -144,7 +145,7 @@ class TravelAgentServiceTest {
     }
 
     @Test
-    void completesFullAgentLoop() {
+    void completesFullAgentLoop() throws IOException {
         TravelAgentResult result = newService().run("demo", "帮我规划上海3日游，预算5000");
 
         assertEquals("done", result.status());
@@ -156,6 +157,13 @@ class TravelAgentServiceTest {
         assertTrue(Files.isRegularFile(pageDir.resolve(result.pageId() + ".html")));
         assertEquals(3, todoCount.get());
         assertEquals(3, result.todoCount());
+        assertFalse(result.plan().hotels().isEmpty());
+        assertFalse(result.plan().restaurants().isEmpty());
+        assertTrue(result.reply().contains("美团酒店推荐"));
+        assertTrue(result.reply().contains("美团美食推荐"));
+        String html = Files.readString(pageDir.resolve(result.pageId() + ".html"));
+        assertTrue(html.contains("外滩精选酒店"));
+        assertTrue(html.contains("本帮菜馆"));
     }
 
     @Test
@@ -243,6 +251,60 @@ class TravelAgentServiceTest {
             public String execute(String userId, JsonNode arguments) {
                 todoCount.incrementAndGet();
                 return "已添加待办 #" + todoCount.get();
+            }
+        };
+    }
+
+    private BotTool hotelTool() {
+        return new BotTool() {
+            @Override
+            public String name() {
+                return "search_hotels";
+            }
+
+            @Override
+            public String description() {
+                return "美团酒店";
+            }
+
+            @Override
+            public Map<String, Object> parameters() {
+                return Map.of("type", "object");
+            }
+
+            @Override
+            public String execute(String userId, JsonNode arguments) {
+                return """
+                    {"hotels":[{"name":"外滩精选酒店","address":"南京东路",
+                      "price":"458元/晚","rating":"4.8","tags":["市中心"]}]}
+                    """;
+            }
+        };
+    }
+
+    private BotTool restaurantTool() {
+        return new BotTool() {
+            @Override
+            public String name() {
+                return "search_restaurants";
+            }
+
+            @Override
+            public String description() {
+                return "美团美食";
+            }
+
+            @Override
+            public Map<String, Object> parameters() {
+                return Map.of("type", "object");
+            }
+
+            @Override
+            public String execute(String userId, JsonNode arguments) {
+                return """
+                    {"restaurants":[{"name":"本帮菜馆","address":"城隍庙",
+                      "avgPrice":"88元/人","rating":"4.7","tags":["本帮菜"]}]}
+                    """;
             }
         };
     }

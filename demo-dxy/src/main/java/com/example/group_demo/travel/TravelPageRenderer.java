@@ -6,6 +6,8 @@ import com.example.group_demo.travel.TravelPlan.DayPlan;
 import com.example.group_demo.travel.TravelPlan.TimeSlot;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
  * 把结构化旅行方案渲染成可分享的 HTML 网页。
  * 所有来自 LLM 的文本都会先做 HTML 转义，避免注入。
@@ -31,6 +33,7 @@ public class TravelPageRenderer {
         appendHero(html, plan, heroSrc);
         appendOverview(html, plan);
         appendDays(html, plan);
+        appendRecommendations(html, plan);
         appendBudget(html, plan);
         appendMustDos(html, plan);
         appendTips(html, plan);
@@ -125,6 +128,74 @@ public class TravelPageRenderer {
             html.append("<dt>").append(label).append("</dt><dd>")
                 .append(escapeHtml(value)).append("</dd>\n");
         }
+    }
+
+    private void appendRecommendations(StringBuilder html, TravelPlan plan) {
+        if (plan.hotels().isEmpty() && plan.restaurants().isEmpty()) {
+            return;
+        }
+        html.append("<section class=\"recommendations\">\n<h2>住宿与美食推荐</h2>\n")
+            .append("<p class=\"rec-note\">推荐信息来自美团开放平台，价格和营业情况请以门店实时信息为准。</p>\n");
+        if (!plan.hotels().isEmpty()) {
+            html.append("<div class=\"rec-group\">\n<h3>酒店推荐</h3>\n<div class=\"rec-grid\">\n");
+            for (TravelPlan.HotelRecommendation hotel : plan.hotels()) {
+                appendRecCard(html, hotel.name(), hotel.address(), hotel.price(), hotel.rating(),
+                    hotel.imageUrl(), hotel.detailUrl(), hotel.tags(), hotel.distance(), "酒店");
+            }
+            html.append("</div>\n</div>\n");
+        }
+        if (!plan.restaurants().isEmpty()) {
+            html.append("<div class=\"rec-group\">\n<h3>美食推荐</h3>\n<div class=\"rec-grid\">\n");
+            for (TravelPlan.RestaurantRecommendation restaurant : plan.restaurants()) {
+                appendRecCard(html, restaurant.name(), restaurant.address(), restaurant.avgPrice(),
+                    restaurant.rating(), restaurant.imageUrl(), restaurant.detailUrl(),
+                    restaurant.tags(), restaurant.distance(), "美食");
+            }
+            html.append("</div>\n</div>\n");
+        }
+        html.append("</section>\n");
+    }
+
+    private void appendRecCard(StringBuilder html, String name, String address, String price,
+                               String rating, String imageUrl, String detailUrl,
+                               List<String> tags, String distance, String fallback) {
+        html.append("<article class=\"rec-card\">\n");
+        if (notBlank(imageUrl)) {
+            html.append("<div class=\"rec-img\" style=\"background-image:url('")
+                .append(escapeHtml(imageUrl)).append("')\"></div>\n");
+        } else {
+            html.append("<div class=\"rec-img rec-img-empty\">").append(escapeHtml(fallback))
+                .append("</div>\n");
+        }
+        html.append("<div class=\"rec-body\">\n")
+            .append("<h4 class=\"rec-name\">").append(escapeHtml(name)).append("</h4>\n");
+        if (tags != null && !tags.isEmpty()) {
+            html.append("<div class=\"rec-tags\">");
+            for (String tag : tags) {
+                html.append("<span class=\"rec-tag\">").append(escapeHtml(tag)).append("</span>");
+            }
+            html.append("</div>\n");
+        }
+        html.append("<div class=\"rec-meta\">\n");
+        if (notBlank(rating)) {
+            html.append("<span class=\"rec-rating\">评分 ").append(escapeHtml(rating))
+                .append("</span>\n");
+        }
+        if (notBlank(price)) {
+            html.append("<span class=\"rec-price\">").append(escapeHtml(price)).append("</span>\n");
+        }
+        html.append("</div>\n");
+        if (notBlank(distance)) {
+            html.append("<p class=\"rec-distance\">").append(escapeHtml(distance)).append("</p>\n");
+        }
+        if (notBlank(address)) {
+            html.append("<p class=\"rec-address\">").append(escapeHtml(address)).append("</p>\n");
+        }
+        if (notBlank(detailUrl)) {
+            html.append("<a class=\"rec-link\" href=\"").append(escapeHtml(detailUrl))
+                .append("\" target=\"_blank\" rel=\"noopener\">查看详情</a>\n");
+        }
+        html.append("</div>\n</article>\n");
     }
 
     private void appendBudget(StringBuilder html, TravelPlan plan) {
@@ -380,6 +451,94 @@ public class TravelPageRenderer {
           font-size: 13px;
           line-height: 1.5;
         }
+        .rec-note {
+          margin: -6px 0 18px;
+          font-size: 13px;
+          color: var(--muted);
+        }
+        .rec-group { margin-top: 22px; }
+        .rec-group h3 {
+          margin: 0 0 12px;
+          font-size: 17px;
+        }
+        .rec-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+        }
+        .rec-card {
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          background: var(--white);
+        }
+        .rec-img {
+          height: 120px;
+          background-size: cover;
+          background-position: center;
+        }
+        .rec-img-empty {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #e8f0ef;
+          color: var(--brand-dark);
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .rec-body {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 14px;
+        }
+        .rec-name {
+          margin: 0;
+          font-size: 16px;
+          line-height: 1.35;
+        }
+        .rec-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .rec-tag {
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: #eef4f4;
+          color: var(--brand-dark);
+          font-size: 12px;
+        }
+        .rec-meta {
+          display: flex;
+          justify-content: space-between;
+          gap: 8px;
+          font-size: 13px;
+        }
+        .rec-rating {
+          color: var(--accent);
+          font-weight: 700;
+        }
+        .rec-price {
+          color: var(--brand-dark);
+          font-weight: 700;
+        }
+        .rec-distance, .rec-address {
+          margin: 0;
+          font-size: 12px;
+          line-height: 1.4;
+          color: var(--muted);
+        }
+        .rec-link {
+          margin-top: auto;
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--brand);
+          text-decoration: none;
+        }
+        .rec-link:hover { text-decoration: underline; }
         table {
           width: 100%;
           border-collapse: collapse;
@@ -465,6 +624,9 @@ public class TravelPageRenderer {
           .checklist { grid-template-columns: 1fr; }
           .schedule li { flex-direction: column; gap: 4px; }
           .time { flex: none; }
+        }
+        @media (max-width: 760px) {
+          .rec-grid { grid-template-columns: 1fr; }
         }
         """;
 }

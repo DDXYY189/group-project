@@ -1,6 +1,7 @@
 package com.example.group_demo.skill;
 
 import com.example.group_demo.skill.travel.TravelSkill;
+import com.example.group_demo.skill.plan.PlanSkill;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -48,7 +49,15 @@ class SkillRegistryTest {
         assertSame(travel, registry.match("帮我规划一下周末去成都的行程"));
         assertSame(travel, registry.match("我想做一份旅行攻略"));
         assertSame(travel, registry.match("这周末去哪玩"));
+        assertSame(travel, registry.match("预算5000，帮我规划4月1-3号上海3日游，两个人，喜欢美食和夜景"));
+        assertSame(travel, registry.match("帮我规划上海3日游"));
         assertNull(registry.match("今天天气怎么样"));
+    }
+
+    @Test
+    void travelPromptPrefersTravelSkillOverWeeklyPlanSkill() {
+        SkillRegistry registry = new SkillRegistry(List.of(new PlanSkill(null), travel));
+        assertSame(travel, registry.match("预算5000，帮我规划4月1-3号上海3日游"));
     }
 
     @Test
