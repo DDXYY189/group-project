@@ -108,7 +108,7 @@ class MessageRouterTest {
     @Test
     void routesTravelSkillToLongTaskAgentWithoutLlmCall() {
         TravelSkill travel = new TravelSkill(new TravelAgentService(
-            null, null, null, null, null, null, null) {
+            null, null, null, null, null, null, null, null) {
             @Override
             public TravelAgentResult run(String userId, String goal) {
                 return TravelAgentResult.error("agent:" + goal);
@@ -126,7 +126,7 @@ class MessageRouterTest {
     @Test
     void routesNaturalTravelPromptToLongTaskAgent() {
         TravelSkill travel = new TravelSkill(new TravelAgentService(
-            null, null, null, null, null, null, null) {
+            null, null, null, null, null, null, null, null) {
             @Override
             public TravelAgentResult run(String userId, String goal) {
                 return TravelAgentResult.error("agent:" + goal);

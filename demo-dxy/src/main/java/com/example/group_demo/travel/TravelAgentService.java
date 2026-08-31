@@ -1,5 +1,8 @@
 package com.example.group_demo.travel;
 
+import com.example.group_demo.amap.AmapClient;
+import com.example.group_demo.amap.AmapClient.AmapPoint;
+import com.example.group_demo.amap.AmapClient.MapData;
 import com.example.group_demo.image.ImageService;
 import com.example.group_demo.llm.LlmService;
 import com.example.group_demo.rag.KeywordRagService;
@@ -64,12 +67,14 @@ public class TravelAgentService {
           ],
           "tips": ["出行提示1", "出行提示2", "出行提示3"],
           "mustDos": ["必做事项1", "必做事项2", "必做事项3"],
+          "attractions": [{"day": 1, "name": "外滩"}, {"day": 1, "name": "城隍庙"}],
           "heroPrompt": "用于生成网页封面图的画面描述"
         }
         要求：
         1. 行程必须基于提供的资料，资料没有的信息用"需现场确认"，不得编造具体营业时间和价格。
         2. 每天 schedule 至少 4 个节点，覆盖上午、下午、晚上；同区域景点安排在同一天。
         3. tips 至少 3 条，mustDos 至少 3 条。
+        4. attractions 列出每天的 2~4 个核心景点，只放真实景点名称，不要放餐厅、酒店或交通工具。
         """;
 
     private final LlmService llmService;
@@ -79,12 +84,13 @@ public class TravelAgentService {
     private final VoiceService voiceService;
     private final TravelPageRenderer pageRenderer;
     private final TravelProperties properties;
+    private final AmapClient amapClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public TravelAgentService(LlmService llmService, ToolRegistry toolRegistry,
                               KeywordRagService ragService, ImageService imageService,
                               VoiceService voiceService, TravelPageRenderer pageRenderer,
-                              TravelProperties properties) {
+                              TravelProperties properties, AmapClient amapClient) {
         this.llmService = llmService;
         this.toolRegistry = toolRegistry;
         this.ragService = ragService;
@@ -92,6 +98,7 @@ public class TravelAgentService {
         this.voiceService = voiceService;
         this.pageRenderer = pageRenderer;
         this.properties = properties;
+        this.amapClient = amapClient;
     }
 
     public TravelAgentResult run(String userId, String goal) {
@@ -142,7 +149,7 @@ public class TravelAgentService {
             steps.add("查询美团酒店推荐：" + (hotels.isEmpty() ? "无结果" : hotels.size() + " 家"));
             List<TravelPlan.RestaurantRecommendation> restaurants = fetchRestaurants(userId, request);
             steps.add("查询美团美食推荐：" + (restaurants.isEmpty() ? "无结果" : restaurants.size() + " 家"));
-            plan = plan.withRecommendations(hotels, restaurants);
+            plan = plan.withRecommendations(hotels, restaurants, plan.attractions());
 
             String pageId = "trip-" + System.currentTimeMillis() + "-"
                 + UUID.randomUUID().toString().substring(0, 6);
@@ -155,7 +162,10 @@ public class TravelAgentService {
                 steps.add("生成语音摘要：完成");
             }
 
-            String htmlUrl = savePage(plan, pageId);
+            MapOutcome mapOutcome = tryGenerateMap(plan, request, pageId);
+            steps.add(mapOutcome.ok() ? "生成高德行程地图：完成" : "生成高德行程地图：失败或无配置");
+
+            String htmlUrl = savePage(plan, pageId, mapOutcome.mapSrc(), mapOutcome.mapData());
             steps.add("渲染并保存旅行网页");
 
             int todoCount = writeTodos(userId, plan);
@@ -318,14 +328,53 @@ public class TravelAgentService {
         }
     }
 
-    private String savePage(TravelPlan plan, String pageId) throws IOException {
+    private MapOutcome tryGenerateMap(TravelPlan plan, TravelRequest request, String pageId) {
+        if (amapClient == null || plan.attractions().isEmpty()) {
+            return MapOutcome.empty();
+        }
+        try {
+            List<AmapPoint> points = new ArrayList<>();
+            for (TravelPlan.Attraction attraction : plan.attractions()) {
+                AmapPoint located = amapClient.locate(attraction.name(), request.destination());
+                points.add(new AmapPoint(located.name(), attraction.day(),
+                    located.lng(), located.lat()));
+            }
+            if (points.isEmpty()) {
+                return MapOutcome.empty();
+            }
+            MapData mapData = amapClient.interactiveMapData(points);
+            String mapSrc = writeStaticMapPng(points, pageId);
+            return new MapOutcome(true, mapSrc, mapData);
+        } catch (Exception e) {
+            log.warn("高德行程地图生成失败，继续生成网页", e);
+            return MapOutcome.empty();
+        }
+    }
+
+    private String writeStaticMapPng(List<AmapPoint> points, String pageId) {
+        try {
+            byte[] png = amapClient.staticMapImage(points);
+            if (png == null || png.length == 0) {
+                return null;
+            }
+            Files.createDirectories(pageDir());
+            Files.write(pageDir().resolve(pageId + "-map.png"), png);
+            return "./" + pageId + "-map.png";
+        } catch (Exception e) {
+            log.warn("静态地图图片生成失败，继续生成交互地图", e);
+            return null;
+        }
+    }
+
+    private String savePage(TravelPlan plan, String pageId, String mapSrc, MapData mapData)
+            throws IOException {
         Path dir = pageDir();
         Files.createDirectories(dir);
         String heroSrc = Files.exists(dir.resolve(pageId + "-hero.png"))
             ? "./" + pageId + "-hero.png" : null;
         String voiceSrc = Files.exists(dir.resolve(pageId + ".mp3"))
             ? "./" + pageId + ".mp3" : null;
-        String html = pageRenderer.render(plan, pageId, heroSrc, voiceSrc);
+        String html = pageRenderer.render(plan, pageId, heroSrc, voiceSrc, mapSrc, mapData);
         Files.writeString(dir.resolve(pageId + ".html"), html, StandardCharsets.UTF_8);
         return properties.getPageBaseUrl() + "/" + pageId + ".html";
     }
@@ -432,6 +481,13 @@ public class TravelAgentService {
         boolean isComplete() {
             return destination != null && !destination.isBlank()
                 && days != null && days > 0;
+        }
+    }
+
+    private record MapOutcome(boolean ok, String mapSrc, MapData mapData) {
+
+        static MapOutcome empty() {
+            return new MapOutcome(false, null, null);
         }
     }
 }

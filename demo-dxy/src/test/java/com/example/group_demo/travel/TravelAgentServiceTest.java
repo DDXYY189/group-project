@@ -1,5 +1,8 @@
 package com.example.group_demo.travel;
 
+import com.example.group_demo.amap.AmapClient;
+import com.example.group_demo.amap.AmapClient.AmapPoint;
+import com.example.group_demo.amap.AmapProperties;
 import com.example.group_demo.llm.LlmProperties;
 import com.example.group_demo.llm.LlmService;
 import com.example.group_demo.rag.KeywordRagService;
@@ -60,6 +63,7 @@ class TravelAgentServiceTest {
           ],
           "tips": ["提前订票", "注意天气", "错峰出行"],
           "mustDos": ["预订外滩门票", "下载地铁APP"],
+          "attractions": [{"day": 1, "name": "外滩"}],
           "heroPrompt": "上海外滩夜景插画"
         }
         """;
@@ -141,7 +145,7 @@ class TravelAgentServiceTest {
         travelProperties.setGenerateImage(false);
         travelProperties.setGenerateVoice(false);
         return new TravelAgentService(llmService, registry, ragService, null, null,
-            new TravelPageRenderer(), travelProperties);
+            new TravelPageRenderer(new AmapProperties()), travelProperties, amapClient());
     }
 
     @Test
@@ -161,9 +165,12 @@ class TravelAgentServiceTest {
         assertFalse(result.plan().restaurants().isEmpty());
         assertTrue(result.reply().contains("美团酒店推荐"));
         assertTrue(result.reply().contains("美团美食推荐"));
+        assertTrue(result.reply().contains("生成高德行程地图：完成"));
         String html = Files.readString(pageDir.resolve(result.pageId() + ".html"));
         assertTrue(html.contains("外滩精选酒店"));
         assertTrue(html.contains("本帮菜馆"));
+        assertTrue(html.contains("行程地图"));
+        assertTrue(Files.isRegularFile(pageDir.resolve(result.pageId() + "-map.png")));
     }
 
     @Test
@@ -305,6 +312,20 @@ class TravelAgentServiceTest {
                     {"restaurants":[{"name":"本帮菜馆","address":"城隍庙",
                       "avgPrice":"88元/人","rating":"4.7","tags":["本帮菜"]}]}
                     """;
+            }
+        };
+    }
+
+    private AmapClient amapClient() {
+        return new AmapClient(new AmapProperties()) {
+            @Override
+            public AmapPoint locate(String name, String city) {
+                return new AmapPoint(name, 0, 121.49, 31.23);
+            }
+
+            @Override
+            public byte[] staticMapImage(List<AmapPoint> points) {
+                return new byte[]{1, 2, 3};
             }
         };
     }

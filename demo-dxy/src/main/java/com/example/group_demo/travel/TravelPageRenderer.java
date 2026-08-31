@@ -1,9 +1,12 @@
 package com.example.group_demo.travel;
 
+import com.example.group_demo.amap.AmapClient.MapData;
+import com.example.group_demo.amap.AmapProperties;
 import com.example.group_demo.travel.TravelPlan.Budget;
 import com.example.group_demo.travel.TravelPlan.BudgetItem;
 import com.example.group_demo.travel.TravelPlan.DayPlan;
 import com.example.group_demo.travel.TravelPlan.TimeSlot;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -11,11 +14,30 @@ import java.util.List;
 /**
  * 把结构化旅行方案渲染成可分享的 HTML 网页。
  * 所有来自 LLM 的文本都会先做 HTML 转义，避免注入。
+ * 行程地图优先用高德 JS API 渲染为可交互地图（缩放、拖动、点击标记）；
+ * 未配置 js-key 时回退为静态地图图片。
  */
 @Component
 public class TravelPageRenderer {
 
+    private final AmapProperties amapProperties;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public TravelPageRenderer(AmapProperties amapProperties) {
+        this.amapProperties = amapProperties;
+    }
+
     public String render(TravelPlan plan, String pageId, String heroSrc, String voiceSrc) {
+        return render(plan, pageId, heroSrc, voiceSrc, null, null);
+    }
+
+    public String render(TravelPlan plan, String pageId, String heroSrc, String voiceSrc,
+                         String mapSrc) {
+        return render(plan, pageId, heroSrc, voiceSrc, mapSrc, null);
+    }
+
+    public String render(TravelPlan plan, String pageId, String heroSrc, String voiceSrc,
+                         String mapSrc, MapData mapData) {
         if (plan == null || plan.destination() == null || plan.destination().isBlank()) {
             throw new IllegalArgumentException("旅行方案缺少目的地");
         }
@@ -33,6 +55,7 @@ public class TravelPageRenderer {
         appendHero(html, plan, heroSrc);
         appendOverview(html, plan);
         appendDays(html, plan);
+        appendMap(html, mapSrc, mapData);
         appendRecommendations(html, plan);
         appendBudget(html, plan);
         appendMustDos(html, plan);
@@ -128,6 +151,54 @@ public class TravelPageRenderer {
             html.append("<dt>").append(label).append("</dt><dd>")
                 .append(escapeHtml(value)).append("</dd>\n");
         }
+    }
+
+    private void appendMap(StringBuilder html, String mapSrc, MapData mapData) {
+        boolean interactive = mapData != null && amapProperties.isJsEnabled();
+        if (!interactive && (mapSrc == null || mapSrc.isBlank())) {
+            return;
+        }
+        html.append("<section class=\"trip-map\">\n<h2>行程地图</h2>\n");
+        if (interactive) {
+            appendInteractiveMap(html, mapData, mapSrc);
+        } else {
+            html.append("<img class=\"trip-map-img\" src=\"").append(escapeHtml(mapSrc))
+                .append("\" alt=\"行程地图\">\n")
+                .append("<p class=\"rec-note\">地图由高德地图生成，路线仅供参考。</p>\n");
+        }
+        html.append("</section>\n");
+    }
+
+    private void appendInteractiveMap(StringBuilder html, MapData mapData, String mapSrc) {
+        String dataJson;
+        try {
+            dataJson = sanitizeForScript(objectMapper.writeValueAsString(mapData));
+        } catch (Exception e) {
+            // 数据序列化失败时降级为静态图
+            html.append("<img class=\"trip-map-img\" src=\"").append(escapeHtml(mapSrc))
+                .append("\" alt=\"行程地图\">\n");
+            return;
+        }
+
+        html.append("<div id=\"trip-map\" class=\"trip-map-canvas\"")
+            .append(" role=\"img\" aria-label=\"行程地图\"></div>\n");
+        if (mapSrc != null && !mapSrc.isBlank()) {
+            html.append("<noscript><img class=\"trip-map-img\" src=\"")
+                .append(escapeHtml(mapSrc)).append("\" alt=\"行程地图\"></noscript>\n");
+        }
+        html.append("<p class=\"rec-note\">地图由高德地图生成，可拖动、缩放，点击标记查看景点。</p>\n");
+        html.append("<script>\n");
+        if (amapProperties.getSecurityJsCode() != null && !amapProperties.getSecurityJsCode().isBlank()) {
+            html.append("window._AMapSecurityConfig={securityJsCode:")
+                .append(quote(amapProperties.getSecurityJsCode())).append("};\n");
+        }
+        html.append("window.__TRIP_MAP_DATA__=").append(dataJson).append(";\n");
+        html.append("window.__TRIP_MAP_IMG__=").append(quote(mapSrc == null ? "" : mapSrc)).append(";\n");
+        html.append(MAP_SCRIPT).append("\n");
+        html.append("</script>\n");
+        html.append("<script src=\"https://webapi.amap.com/maps?v=2.0&key=")
+            .append(escapeHtml(amapProperties.getJsKey())).append("\"></script>\n");
+        html.append("<script>\ninitTripMap();\n</script>\n");
     }
 
     private void appendRecommendations(StringBuilder html, TravelPlan plan) {
@@ -268,6 +339,58 @@ public class TravelPageRenderer {
         }
         return value.matches(".*[元¥$￥].*") ? value : value + " 元";
     }
+
+    /**
+     * 把 JSON 转义为可安全嵌入 &lt;script&gt; 的字符串：防止 &lt;/script&gt;、HTML 注释
+     * 及 U+2028/U+2029 行分隔符打断脚本（后者在 JS 字符串字面量中非法）。
+     */
+    private static String sanitizeForScript(String json) {
+        return json
+            .replace("\u2028", "\\u2028")
+            .replace("\u2029", "\\u2029")
+            .replace("<", "\\u003c")
+            .replace(">", "\\u003e");
+    }
+
+    /** 生成单引号包裹的 JS 字符串字面量。 */
+    private static String quote(String value) {
+        String v = value == null ? "" : value;
+        return "'" + v.replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("<", "\\u003c") + "'";
+    }
+
+    private static final String MAP_SCRIPT = """
+        function initTripMap(){
+          var d=window.__TRIP_MAP_DATA__;
+          var el=document.getElementById('trip-map');
+          var img=window.__TRIP_MAP_IMG__;
+          function showImage(){if(el&&img){el.innerHTML='<img class="trip-map-img" src="'+img+'" alt="行程地图">';}}
+          if(!window.AMap||!d||!d.points||!d.points.length||!el){showImage();return;}
+          function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+          var map=new AMap.Map('trip-map',{zoom:11,viewMode:'2D'});
+          var info=new AMap.InfoWindow({offset:new AMap.Pixel(0,-32)});
+          d.points.forEach(function(p,i){
+            var marker=new AMap.Marker({
+              position:[p.lng,p.lat],map:map,
+              label:{content:String.fromCharCode(65+i),direction:'top'},
+              title:esc(p.name)
+            });
+            marker.on('click',function(){
+              info.setContent('<div class="trip-map-iw"><b>'+esc(p.name)+'</b><br>Day '+p.day+'</div>');
+              info.open(map,marker.getPosition());
+            });
+          });
+          (d.paths||[]).forEach(function(path){
+            if(path.coords&&path.coords.length){
+              new AMap.Polyline({map:map,path:path.coords,strokeColor:path.color,strokeWeight:5,strokeOpacity:0.85,strokeLinecap:'round',strokeLinejoin:'round',showDir:true});
+            }
+          });
+          map.setFitView();
+        }
+        """;
 
     private static final String CSS = """
         :root {
@@ -539,6 +662,21 @@ public class TravelPageRenderer {
           text-decoration: none;
         }
         .rec-link:hover { text-decoration: underline; }
+        .trip-map-img {
+          display: block;
+          width: 100%;
+          border: 1px solid var(--line);
+          border-radius: 8px;
+        }
+        .trip-map-canvas {
+          width: 100%;
+          height: 480px;
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          background: #eef4f4;
+          overflow: hidden;
+        }
+        .trip-map-iw { padding: 6px 8px; font-size: 13px; line-height: 1.5; }
         table {
           width: 100%;
           border-collapse: collapse;
@@ -624,6 +762,7 @@ public class TravelPageRenderer {
           .checklist { grid-template-columns: 1fr; }
           .schedule li { flex-direction: column; gap: 4px; }
           .time { flex: none; }
+          .trip-map-canvas { height: 320px; }
         }
         @media (max-width: 760px) {
           .rec-grid { grid-template-columns: 1fr; }

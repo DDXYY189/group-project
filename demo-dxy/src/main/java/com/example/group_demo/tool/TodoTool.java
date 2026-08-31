@@ -22,7 +22,8 @@ public class TodoTool implements BotTool {
 
     @Override
     public String description() {
-        return "管理当前用户的待办事项：add 添加、list 查看、done 完成。当用户提到待办、备忘、提醒事项时调用。";
+        return "管理当前用户的待办事项：add 添加、list 查看、done 完成。"
+            + "当用户要记录不设时间提醒的待办清单（如“买牛奶”“写作业”）时调用；需要到点/定时提醒请使用 manage_reminder。";
     }
 
     @Override

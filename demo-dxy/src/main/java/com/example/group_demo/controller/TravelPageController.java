@@ -39,6 +39,11 @@ public class TravelPageController {
         return serve(id + "-hero.png", MediaType.IMAGE_PNG);
     }
 
+    @GetMapping("/{id}-map.png")
+    public ResponseEntity<Resource> map(@PathVariable String id) throws IOException {
+        return serve(id + "-map.png", MediaType.IMAGE_PNG);
+    }
+
     private ResponseEntity<Resource> serve(String fileName, MediaType mediaType) throws IOException {
         if (fileName == null || !fileName.matches("[A-Za-z0-9][A-Za-z0-9_.-]*")) {
             return ResponseEntity.badRequest().build();

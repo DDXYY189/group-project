@@ -4,11 +4,17 @@ import com.example.group_demo.tool.BotTool;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class ReminderTool implements BotTool {
+
+    private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
     private final ReminderService reminderService;
 
@@ -24,7 +30,8 @@ public class ReminderTool implements BotTool {
     @Override
     public String description() {
         return "管理当前用户的定时提醒：add 创建一次性/每天/Cron 提醒，list 查看提醒，delete 删除提醒。"
-            + "当用户要求定时提醒、到点提醒、每天提醒、设置闹钟时调用。";
+            + "当用户要求到点提醒、定时提醒、每天提醒、设置闹钟时调用（例如“晚上7点开会”“明天早上9点提醒我”“每天8点打卡”）。"
+            + "一次性提醒请提供 fire_at（yyyy-MM-dd HH:mm）或 time_text（自然语言时间，如“晚上7点”）。";
     }
 
     @Override
@@ -48,7 +55,11 @@ public class ReminderTool implements BotTool {
                 ),
                 "fire_at", Map.of(
                     "type", "string",
-                    "description", "一次性提醒触发时间，格式 yyyy-MM-dd HH:mm 或 ISO 时间"
+                    "description", "一次性提醒触发时间，格式 yyyy-MM-dd HH:mm 或 ISO 时间，例如 2026-08-30 19:00"
+                ),
+                "time_text", Map.of(
+                    "type", "string",
+                    "description", "自然语言触发时间，例如：晚上7点、明天早上9点、后天下午3点、下周一8点"
                 ),
                 "time", Map.of(
                     "type", "string",
@@ -81,18 +92,47 @@ public class ReminderTool implements BotTool {
 
     private String add(String userId, JsonNode arguments) {
         String scheduleType = arguments.path("schedule_type").asText("once");
+        String content = arguments.path("content").asText("");
         String time = arguments.path("time").asText("");
         String cron = arguments.path("cron").asText("");
-        Long fireAt = ReminderTimeParser.parse(arguments.path("fire_at").asText(""));
-        ReminderService.Reminder reminder = reminderService.add(
-            userId,
-            arguments.path("content").asText(""),
-            scheduleType,
-            time.isBlank() ? null : time,
-            cron.isBlank() ? null : cron,
-            fireAt
-        );
+        String timeText = arguments.path("time_text").asText("");
+        ReminderService.Reminder reminder;
+        if ("once".equals(scheduleType)) {
+            Long fireAt = resolveFireAt(arguments);
+            if (fireAt == null) {
+                throw new IllegalArgumentException(
+                    "一次性提醒需要触发时间，请提供 fire_at（如 2026-08-30 19:00）或 time_text（如 晚上7点）");
+            }
+            reminder = reminderService.add(userId, content, scheduleType, null, null, fireAt);
+        } else {
+            if ("daily".equals(scheduleType) && time.isBlank() && !timeText.isBlank()) {
+                LocalTime parsed = ReminderTimeParser.parseTimeText(timeText);
+                if (parsed != null) {
+                    time = parsed.format(HH_MM);
+                }
+            }
+            reminder = reminderService.add(
+                userId,
+                content,
+                scheduleType,
+                time.isBlank() ? null : time,
+                cron.isBlank() ? null : cron,
+                null
+            );
+        }
         return "已创建定时提醒 " + reminderService.describe(reminder);
+    }
+
+    private Long resolveFireAt(JsonNode arguments) {
+        String fireAt = arguments.path("fire_at").asText("");
+        String timeText = arguments.path("time_text").asText("");
+        String time = arguments.path("time").asText("");
+        long now = System.currentTimeMillis();
+        if (!fireAt.isBlank()) {
+            return ReminderTimeParser.parse(fireAt, now, ZONE);
+        }
+        String candidate = !timeText.isBlank() ? timeText : time;
+        return candidate.isBlank() ? null : ReminderTimeParser.parse(candidate, now, ZONE);
     }
 
     private String list(String userId) {

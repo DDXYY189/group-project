@@ -81,6 +81,8 @@ Invoke-RestMethod -Method Post http://localhost:8080/api/bot/mcp/reload
 - 用户自定义提醒：支持一次性、每天、Cron 三种类型，H2 持久化，机器人会主动发送到微信
 
 微信里可以直接说“提醒我明天早上 9 点开会”，模型会调用 `manage_reminder` 工具创建提醒。
+一次性提醒支持自然语言时间，例如“提醒我晚上 7 点开会”“下周一 8:30 交报告”“5 分钟后提醒我喝水”，
+工具会自动换算成具体触发时间；只记录不设提醒的事项时使用待办（`manage_todo`）。
 
 控制台已增加“定时任务”面板，可创建、查看、删除提醒。
 
@@ -247,3 +249,24 @@ Invoke-WebRequest "http://localhost:8080/api/trips/<pageId>.html"
 - `meituan.cache-ttl-seconds`：按“城市 + 预算”缓存推荐结果，默认 `3600` 秒
 
 美团接口的签名与返回字段因接口而异，拿到文档后只需调整 `MeituanClient` 里的签名方法和字段映射即可。
+
+## 高德静态行程地图
+
+旅行 Agent 会把 LLM 生成的核心景点（`attractions` 字段）转成经纬度，按天计算步行路线，并生成一张高德静态地图图片，渲染进旅行网页的“行程地图”区块。地图只画景点，不包含酒店和餐厅。
+
+实现流程：
+
+1. `AmapClient.locate()`：调用高德 `place/text` 或 `geocode/geo` 把景点名称转成坐标
+2. `AmapClient.routePolyline()`：调用高德 `direction/walking` 获取相邻景点间的步行路线
+3. `AmapClient.staticMapImage()`：调用高德 `staticmap` 生成带标记和每日路线折线的图片
+4. 图片保存为 `data/trips/{pageId}-map.png`，HTML 直接引用本地文件，不受防盗链影响
+
+配置项（`application.properties`）：
+
+- `amap.enabled`：总开关，默认 `true`
+- `amap.rest-key`：高德 Web 服务 key，放在已 gitignore 的 `application-local.properties`
+- `amap.base-url`：默认 `https://restapi.amap.com`
+- `amap.route-mode`：路线模式，默认 `walking`，可改 `driving`
+- `amap.cache-ttl-seconds`：坐标和路线缓存时间，默认 `3600` 秒
+
+注意：高德 Web 服务 key 与 Web 端 JS API key 是不同类型，静态地图方案必须使用 Web 服务 key。接口失败时只隐藏地图区块，不影响旅行方案生成。

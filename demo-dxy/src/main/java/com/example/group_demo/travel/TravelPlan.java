@@ -18,7 +18,8 @@ public record TravelPlan(
         List<String> mustDos,
         String heroPrompt,
         List<HotelRecommendation> hotels,
-        List<RestaurantRecommendation> restaurants) {
+        List<RestaurantRecommendation> restaurants,
+        List<Attraction> attractions) {
 
     public TravelPlan {
         dates = dates == null ? List.of() : List.copyOf(dates);
@@ -27,6 +28,7 @@ public record TravelPlan(
         mustDos = mustDos == null ? List.of() : List.copyOf(mustDos);
         hotels = hotels == null ? List.of() : List.copyOf(hotels);
         restaurants = restaurants == null ? List.of() : List.copyOf(restaurants);
+        attractions = attractions == null ? List.of() : List.copyOf(attractions);
     }
 
     public static TravelPlan fromJson(JsonNode node) {
@@ -50,15 +52,18 @@ public record TravelPlan(
                 TravelJsonParser.textList(node.get("mustDos")),
                 TravelJsonParser.text(node, "heroPrompt"),
                 parseHotels(node.get("hotels")),
-                parseRestaurants(node.get("restaurants")));
+                parseRestaurants(node.get("restaurants")),
+                parseAttractions(node.get("attractions")));
     }
 
     public TravelPlan withRecommendations(List<HotelRecommendation> hotelItems,
-                                          List<RestaurantRecommendation> restaurantItems) {
+                                          List<RestaurantRecommendation> restaurantItems,
+                                          List<Attraction> attractionItems) {
         return new TravelPlan(destination, days, dates, budget, itinerary, tips, mustDos,
             heroPrompt,
             hotelItems == null ? hotels : hotelItems,
-            restaurantItems == null ? restaurants : restaurantItems);
+            restaurantItems == null ? restaurants : restaurantItems,
+            attractionItems == null ? attractions : attractionItems);
     }
 
     private static List<HotelRecommendation> parseHotels(JsonNode node) {
@@ -76,6 +81,16 @@ public record TravelPlan(
         if (node != null && node.isArray()) {
             for (JsonNode item : node) {
                 result.add(RestaurantRecommendation.fromJson(item));
+            }
+        }
+        return result;
+    }
+
+    private static List<Attraction> parseAttractions(JsonNode node) {
+        List<Attraction> result = new ArrayList<>();
+        if (node != null && node.isArray()) {
+            for (JsonNode item : node) {
+                result.add(Attraction.fromJson(item));
             }
         }
         return result;
@@ -195,6 +210,15 @@ public record TravelPlan(
                 TravelJsonParser.text(node, "detailUrl"),
                 TravelJsonParser.textList(node == null ? null : node.get("tags")),
                 TravelJsonParser.text(node, "distance"));
+        }
+    }
+
+    public record Attraction(int day, String name) {
+
+        public static Attraction fromJson(JsonNode node) {
+            return new Attraction(
+                node == null ? 1 : node.path("day").asInt(1),
+                TravelJsonParser.text(node, "name"));
         }
     }
 }

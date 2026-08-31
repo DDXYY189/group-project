@@ -14,6 +14,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -24,9 +27,12 @@ import java.util.Map;
 public class LlmService {
 
     private static final Logger log = LoggerFactory.getLogger(LlmService.class);
+    private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final String SYSTEM_PROMPT =
         "你是微信机器人助手，请用简洁的中文回答问题。工具返回的列表内容必须完整逐条展示给用户，不要只做概括。"
-            + "当工具返回联网搜索结果时，必须以搜索结果为准，优先引用来源，不得因为与你的训练知识不一致而否定搜索结果。";
+            + "当工具返回联网搜索结果时，必须以搜索结果为准，优先引用来源，不得因为与你的训练知识不一致而否定搜索结果。"
+            + "用户要求到点/定时提醒时调用 manage_reminder；只要求记录待办、不要求到点提醒时调用 manage_todo。";
 
     private final LlmProperties properties;
     private final RestClient restClient;
@@ -178,6 +184,9 @@ public class LlmService {
         if (extraSystemPrompt != null && !extraSystemPrompt.isBlank()) {
             systemContent = systemContent + "\n\n" + extraSystemPrompt;
         }
+        systemContent = systemContent + "\n\n当前时间：" + ZonedDateTime.now(ZONE).format(TIME_FORMATTER)
+            + "（Asia/Shanghai）。用户提到“今晚/明天/后天/下周”等相对时间时，请先换算成具体日期时间"
+            + "，再调用工具；定时提醒的触发时间请用 fire_at 或 time_text 传递。";
         messages.add(Map.of("role", "system", "content", systemContent));
         if (context.summary() != null && !context.summary().isBlank()) {
             messages.add(Map.of(
