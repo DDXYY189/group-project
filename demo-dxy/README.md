@@ -1,272 +1,248 @@
-# demo-dxy
+# 微信智能助手 — 基于 LLM + MCP 的多 Agent 应用
 
-微信 iLink Bot 骨架工程（组长分支 `feature/dxy`）。
+> 一个接入微信的 AI 助手：扫码即用，支持多用户同时在线；内置天气、待办、搜索等 10+ 工具，集成阿里云百炼大模型与 MCP 协议；亮点功能是**旅行规划长任务 Agent**——一句话生成含可交互地图、酒店美食推荐、语音摘要的完整行程网页。
 
-## 运行
+<p>
+  <img src="https://img.shields.io/badge/Java-21-orange" />
+  <img src="https://img.shields.io/badge/Spring%20Boot-4.1.0-green" />
+  <img src="https://img.shields.io/badge/Tests-108%20passed-brightgreen" />
+  <img src="https://img.shields.io/badge/License-MIT-blue" />
+</p>
+
+---
+
+## 架构总览
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        微信用户 (多端)                        │
+│                    扫码登录 / 文字·语音对话                     │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ wechat-ilink-sdk
+┌──────────────────────────▼──────────────────────────────────┐
+│                     Spring Boot 应用                         │
+│  ┌───────────┐   ┌──────────────┐   ┌────────────────────┐  │
+│  │  会话管理   │   │  MessageRouter│   │   控制台 (静态页)    │  │
+│  │ H2 持久化   │   │ Skill→RAG→LLM│   │  会话/提醒/调试面板  │  │
+│  └───────────┘   └──────┬───────┘   └────────────────────┘  │
+│                          │                                   │
+│         ┌────────────────┼────────────────┐                  │
+│         ▼                ▼                ▼                  │
+│   ┌───────────┐   ┌───────────┐   ┌──────────────┐          │
+│   │ LLM Service│   │ ToolRegistry│  │ MCP ToolBridge│         │
+│   │ (千问/VL)  │   │ 10+ 内置工具 │  │ 远程工具动态注册│         │
+│   └─────┬─────┘   └─────┬─────┘   └──────┬───────┘          │
+│         │               │                │                   │
+│         └───────────────┼────────────────┘                   │
+│                         ▼                                    │
+│              ┌─────────────────────┐                         │
+│              │   长任务 Agent 层     │                         │
+│              │  ┌───────┐ ┌──────┐ │                         │
+│              │  │Travel │ │ Plan │ │                         │
+│              │  │Agent  │ │Agent │ │                         │
+│              │  └───┬───┘ └──────┘ │                         │
+│              └──────┼──────────────┘                         │
+│         ┌───────────┼───────────┐                            │
+│         ▼           ▼           ▼                            │
+│   ┌──────────┐ ┌────────┐ ┌──────────┐                       │
+│   │ 高德地图   │ │ 美团API │ │ RAG知识库 │                      │
+│   │ JS API    │ │酒店/美食│ │ 关键词检索 │                      │
+│   └──────────┘ └────────┘ └──────────┘                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 核心功能
+
+| 模块 | 能力 | 技术实现 |
+|------|------|----------|
+| **多用户会话** | 多人同时扫码登录，H2 持久化，重启免扫码 | wechat-ilink-sdk + H2 + 共享线程池 |
+| **LLM 对话** | 文本/图片/语音多模态，edge-tts 语音回复 | 阿里云百炼 (千问) + OpenAI 兼容接口 |
+| **工具系统** | 天气、待办、搜索、翻译、热点等 10+ 工具，LLM 自动调用 | Function Calling + ToolRegistry 动态注册 |
+| **MCP 协议** | 接入远程 MCP Server，工具自动注册为本地可调用 | 官方 Java MCP SDK，支持 stdio / SSE / HTTP |
+| **Skill 路由** | 关键词命中技能 → RAG 增强 → LLM 兜底，三级路由 | Skill 接口 + SkillRegistry 自动收集 |
+| **RAG 检索** | 知识库关键词倒排索引，注入系统提示词 | 中英文分词 + 倒排索引 + Top-K |
+| **定时提醒** | 自然语言建提醒（"明早 9 点开会"），主动推送到微信 | ReminderTimeParser + Cron + H2 持久化 |
+| **旅行 Agent** | 一句话生成完整行程网页：景点、路线、酒店美食、语音 | 长任务拆解 + 高德地图 + 美团 API + edge-tts |
+| **可交互地图** | 可缩放/拖动/点击标记/按天分色步行路线 | 高德 JS API 2.0 + 服务端 QPS 限流重试 |
+
+---
+
+## 技术栈
+
+| 分类 | 技术 | 版本 |
+|------|------|------|
+| 语言 / 框架 | Java / Spring Boot | 21 / 4.1.0 |
+| 微信 SDK | wechat-ilink-sdk | 2.3.3 |
+| LLM | 阿里云百炼（千问 qwen-plus / qwen-vl-plus） | OpenAI 兼容 |
+| MCP | io.modelcontextprotocol.sdk:mcp | 2.0.1 |
+| 地图 | 高德 Web 服务 REST + JS API 2.0 | — |
+| 语音 | edge-tts（合成）/ 百炼 ASR（转写） | — |
+| 二维码 | Google ZXing | 3.5.3 |
+| 数据库 | H2（会话/提醒持久化） | 内置 |
+| 测试 | JUnit 5 + Spring Boot Test | 108 个测试 |
+
+---
+
+## 快速开始
+
+### 1. 环境要求
+
+- JDK 21+
+- Maven 3.9+
+- 阿里云百炼 API Key（[获取地址](https://bailian.console.aliyun.com/)）
+- 高德 Web 服务 Key（可选，用于行程地图）
+
+### 2. 配置
+
+复制 `application-local.properties` 模板，填入你的密钥（该文件已被 gitignore）：
+
+```properties
+# 阿里云百炼（必填）
+llm.api-key=sk-your-dashscope-key
+
+# 高德地图（可选，不填则跳过地图功能）
+amap.rest-key=your-amap-rest-key
+amap.js-key=your-amap-js-key
+amap.security-js-code=your-security-code
+```
+
+### 3. 启动
 
 ```bash
 mvn spring-boot:run
 ```
 
-启动后：
+启动后打开 `http://localhost:8080`，扫码登录微信即可对话。
 
-- 前端会自动创建会话并扫码；手动接口：
-  - `POST /api/bot/session`：创建会话，返回 `sessionId`
-  - `GET /api/bot/session/{id}/qr.png`：获取该会话的登录二维码
-  - `GET /api/bot/session/{id}/status`：查看该会话登录状态
-  - `POST /api/bot/session/{id}/relogin`：重新登录
-  - `DELETE /api/bot/session/{id}`：关闭并删除会话
-  - `GET /api/bot/sessions`：查看全部会话
-- 扫码登录后，给机器人发文本，会收到 `收到：<原文>` 的回复
+---
 
-## 多用户会话
+## 旅行规划 Agent（亮点功能）
 
-每个 `sessionId` 对应一个独立的 `ILinkClient`，支持多个用户同时扫码，登录过程由共享线程池异步执行，互不阻塞。
-登录成功后通过 `exportResumeContext()` 将登录信息存入 H2（`bot_session` 表），服务重启后自动恢复，无需重新扫码；token 失效时在页面点“重新登录”即可。
+用户只需一句话，Agent 自动完成完整链路并产出网页成品：
 
-## 技术栈
+```
+用户: 帮我规划杭州 2 日游
 
-- Java 21
-- Spring Boot 4.1.0
-- wechat-ilink-sdk 2.3.3
+Agent 自动执行:
+  1. 解析目的地/天数/预算/日期 → 缺失信息补问
+  2. 查询目的地天气
+  3. 联网搜索交通/景点/住宿/美食
+  4. 检索本地旅行知识库 (RAG)
+  5. LLM 生成结构化 JSON 行程
+  6. 渲染交互式行程网页 (含地图/酒店/美食卡片)
+  7. 写入每日待办
+  8. 生成封面图 + 语音摘要 (失败自动跳过)
 
-## LLM 接入（阿里云百炼 / 千问）
-
-```powershell
-$env:DASHSCOPE_API_KEY="sk-你的key"
-mvn spring-boot:run
+输出: http://localhost:8080/api/trips/{id}.html
 ```
 
-配置项：
+行程网页包含：
+- **可交互地图**：高德 JS API 2.0，支持缩放/拖动/点击标记弹窗/按天分色步行路线
+- **酒店美食推荐**：美团开放平台真实数据，卡片式展示
+- **每日行程**：景点介绍 + 交通方式 + 时间安排
+- **语音摘要**：edge-tts 合成 MP3，可在线播放
+- **封面图**：AI 生成行程主题图
 
-- `llm.model`：文本模型，默认 `qwen-plus`
-- `llm.vision-model`：图片理解模型，默认 `qwen-vl-plus`
-- `llm.base-url`：OpenAI 兼容地址，默认 `https://dashscope.aliyuncs.com/compatible-mode/v1`
+---
 
-语音消息支持 ASR 转写、edge-tts 合成，并以 MP3 文件回复，失败时自动回退为文本。
+## 项目结构
 
-已内置工具：天气查询、待办管理、当前时间、联网搜索、翻译、随机数、查单词、热点资讯、清除记忆。对话记忆支持长时摘要与 TTL 过期。
-
-## MCP 能力接入
-
-项目已接入官方 Java MCP SDK，支持通过 `application.properties` 配置 stdio、SSE 和 Streamable HTTP 三类 MCP Server。远程工具会自动注册成 `mcp_<server>_<tool>` 形式的本地工具，微信对话中可直接调用。
-
-默认已启用内置 MCP 演示 Server（A2 方案）：应用启动后在 `/mcp/demo` 只暴露 `demo_echo`、`demo_current_time`、`demo_add` 三个 MCP 专用演示工具，避免工具列表过多。客户端会自动连接它，控制台 MCP 面板可直接看到连接状态和已接入工具，无需安装 Node/Python。
-
-```properties
-mcp.enabled=true
-mcp.demo-server-enabled=true
-mcp.servers.demo.type=http
-mcp.servers.demo.url=http://localhost:8080
-mcp.servers.demo.endpoint=/mcp/demo
-# mcp.servers.everything.type=stdio
-# mcp.servers.everything.command=npx
-# mcp.servers.everything.args=-y,@modelcontextprotocol/server-everything
+```
+src/main/java/com/example/group_demo/
+├── GroupDemoApplication.java          # 启动类
+├── bot/                               # 微信消息收发与会话管理
+├── controller/                        # REST API (BotController / TravelPageController)
+├── llm/                               # LLM 服务 + 对话记忆 (长时摘要/TTL)
+├── tool/                              # 10+ 内置工具 + 工具链编排
+│   └── chain/                         # 确定性多步工具链
+├── mcp/                               # MCP 协议接入 (Server/Bridge/Manager)
+├── skill/                             # Skill 路由与技能实现
+│   ├── travel/                        # 旅行规划技能
+│   └── plan/                          # 周计划技能
+├── router/                            # 三级消息路由 (Skill→RAG→LLM)
+├── rag/                               # 关键词检索增强
+├── scheduler/                         # 定时提醒 + 每日推送
+├── travel/                            # 旅行 Agent 全链路
+│   ├── TravelAgentService.java        #   长任务编排
+│   ├── TravelPageRenderer.java        #   网页渲染 (含交互地图)
+│   └── TravelJsonParser.java          #   LLM JSON 解析
+├── amap/                              # 高德地图 (地理编码/路线/交互地图)
+├── meituan/                           # 美团酒店/美食推荐
+├── session/                           # 多用户会话 + H2 持久化
+├── voice/                             # edge-tts 语音合成
+├── image/                             # AI 封面图生成
+├── weather/                           # 天气查询
+├── news/                              # 热点新闻
+└── search/                            # 联网搜索
 ```
 
-调试接口：
+---
 
-```powershell
-Invoke-RestMethod http://localhost:8080/api/bot/mcp/status
-Invoke-RestMethod -Method Post http://localhost:8080/api/bot/mcp/reload
+## API 速览
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/bot/session` | POST | 创建微信会话 |
+| `/api/bot/session/{id}/qr.png` | GET | 获取登录二维码 |
+| `/api/bot/travel-agent` | GET | 触发旅行 Agent |
+| `/api/trips/{id}.html` | GET | 查看行程网页 |
+| `/api/trips/{id}.mp3` | GET | 语音摘要 |
+| `/api/bot/skills` | GET | 已注册技能列表 |
+| `/api/bot/route` | GET | 测试消息路由 |
+| `/api/bot/rag/search` | GET | RAG 检索测试 |
+| `/api/bot/reminders` | GET/POST | 提醒管理 |
+| `/api/bot/mcp/status` | GET | MCP 连接状态 |
+| `/api/bot/tool-chains` | GET | 工具链列表 |
+
+完整 API 见 `BotController` (`/api/bot/**`) 与 `TravelPageController` (`/api/trips/**`)。
+
+---
+
+## 测试
+
+```bash
+mvn test
 ```
 
-协议说明见 [docs/mcp.md](docs/mcp.md)。
+108 个单元/集成测试覆盖全部核心模块：LLM 工具调用、对话记忆、消息路由、Skill 注册、RAG 检索、提醒时间解析、旅行 Agent、高德地图客户端、MCP 工具桥接、美团客户端等。
 
-## 定时任务与提醒
+---
 
-内置两类定时任务：
+## 配置参考
 
-- 每日热点推送：按 `scheduler.daily-news-cron` 定时向联系过机器人的用户推送新闻
-- 用户自定义提醒：支持一次性、每天、Cron 三种类型，H2 持久化，机器人会主动发送到微信
+所有密钥放在 `application-local.properties`（已 gitignore），其余配置项见 `application.properties`。关键配置：
 
-微信里可以直接说“提醒我明天早上 9 点开会”，模型会调用 `manage_reminder` 工具创建提醒。
-一次性提醒支持自然语言时间，例如“提醒我晚上 7 点开会”“下周一 8:30 交报告”“5 分钟后提醒我喝水”，
-工具会自动换算成具体触发时间；只记录不设提醒的事项时使用待办（`manage_todo`）。
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `llm.api-key` | — | 百炼 API Key（必填） |
+| `llm.model` | qwen-plus | 文本模型 |
+| `llm.vision-model` | qwen-vl-plus | 图片理解模型 |
+| `amap.enabled` | true | 高德地图开关 |
+| `amap.rest-key` | — | Web 服务 REST key |
+| `amap.js-key` | — | Web 端 JS API key |
+| `amap.security-js-code` | — | JS API 安全密钥 |
+| `meituan.enabled` | true | 美团推荐开关 |
+| `meituan.mock-enabled` | true | 无凭证时用示例数据 |
+| `rag.enabled` | true | RAG 检索开关 |
+| `rag.top-k` | 3 | 返回资料块数量 |
+| `scheduler.enabled` | true | 定时任务开关 |
+| `travel.page-base-url` | localhost:8080/api/trips | 行程网页链接前缀 |
+| `mcp.enabled` | true | MCP 总开关 |
 
-控制台已增加“定时任务”面板，可创建、查看、删除提醒。
+> **高德地图说明**：`rest-key`（Web 服务类型）用于服务端地理编码/路线规划/静态图；`js-key`（Web 端 JS API 类型）用于前端可交互地图，需在高德控制台单独申请并配置域名白名单。两者是不同类型的 key。
 
-配置项：
+---
 
-- `scheduler.enabled`：总开关，默认 `true`
-- `scheduler.daily-news-cron`：每日新闻 Cron，默认 `0 30 8 * * *`
-- `scheduler.reminder-poll-ms`：提醒扫描间隔，默认 `15000`
-- `scheduler.timezone`：时区，默认 `Asia/Shanghai`
+## 文档
 
-调试接口：
+- [MCP 协议接入说明](docs/mcp.md)
 
-```powershell
-# 查看调度状态
-Invoke-RestMethod http://localhost:8080/api/bot/scheduled/status
+---
 
-# 查看全部提醒
-Invoke-RestMethod http://localhost:8080/api/bot/reminders
+## 团队协作
 
-# 创建一次性提醒
-Invoke-RestMethod -Method Post -ContentType "application/json" `
-  -Body '{"userId":"demo","content":"明天开会","scheduleType":"once","fireAt":"2026-08-27 09:00"}' `
-  http://localhost:8080/api/bot/reminders
-
-# 删除提醒
-Invoke-RestMethod -Method Delete "http://localhost:8080/api/bot/reminders/1?userId=demo"
-```
-
-## Skill 路由
-
-新增 `skill` 包与 `router` 包，文本消息统一走 `MessageRouter`：
-
-- 命中 Skill 关键词 -> Skill 执行
-- 未命中 -> 命中 RAG 关键词 -> 增强 Prompt -> LLM 回复
-- 都没命中 -> LLM 工具对话兜底
-
-`Skill` 接口支持两种执行模式：
-
-- 直接执行：`directReply()` 返回 true，命中后调用 `execute()` 返回结果
-- LLM 驱动：把 `instructions()` 注入系统提示词，并只开放 `allowedTools()` 声明的工具
-
-`SkillRegistry` 启动时自动收集所有 Skill Bean，新增技能只需新增一个实现类，不需要改注册代码。
-
-已内置技能：
-
-- `travel_planner` 旅行规划：关键词为旅游、旅行、攻略、行程等，注入规划指令，只开放 `web_search`、`query_weather`、`manage_todo` 三个工具
-
-调试接口：
-
-```powershell
-# 查看已注册技能
-Invoke-RestMethod http://localhost:8080/api/bot/skills
-
-# 测试路由：命中技能/兜底闲聊
-Invoke-RestMethod "http://localhost:8080/api/bot/route?q=帮我规划成都三日游&userId=demo"
-```
-
-## RAG 关键词检索
-
-极简关键词版 RAG：启动时加载 `src/main/resources/knowledge/*.md`，按段落切块后用中英文关键词构建倒排索引，查询时按命中次数返回 top-k 资料块，并作为“参考资料”注入系统提示词。
-
-配置项：
-
-- `rag.enabled`：是否启用 RAG，默认 `true`
-- `rag.top-k`：最多返回几个资料块，默认 `3`
-
-调试接口：
-
-```powershell
-# 查看 RAG 开关、知识块数量
-Invoke-RestMethod http://localhost:8080/api/bot/rag/status
-
-# 开启/关闭 RAG（对比测试）
-Invoke-RestMethod -Method Post "http://localhost:8080/api/bot/rag/toggle?enabled=false"
-Invoke-RestMethod -Method Post "http://localhost:8080/api/bot/rag/toggle?enabled=true"
-
-# 查看关键词检索命中结果
-Invoke-RestMethod "http://localhost:8080/api/bot/rag/search?q=校庆是什么时候"
-```
-
-对比测试：在 `rag.enabled=false` 与 `rag.enabled=true` 两种状态下问同一个问题，例如“学校校庆是什么时候”，关闭时模型只能凭自身知识回答，开启时 prompt 会包含知识库中的“11 月 18 日”资料。
-
-## 多步工具链
-
-`ToolChainService` 支持确定性的工具链式调用：下一步的参数模板通过 `{{prev.xxx}}` 引用上一步的执行结果，任一步失败立即中断。已注册两条链：
-
-- `weather_to_todo`：`query_weather` -> `manage_todo`，把城市天气自动记入待办
-- `hot_news_to_todo`：`get_hot_news` -> `web_search` -> `manage_todo`，把第一条热点搜出详情后记入待办
-
-手动验证接口：
-
-```powershell
-# 查看已注册的链
-Invoke-RestMethod http://localhost:8080/api/bot/tool-chains
-
-# 运行天气 -> 待办链（body 是链入口参数）
-Invoke-RestMethod -Method Post -ContentType "application/json" `
-  -Body '{"location":"北京"}' `
-  "http://localhost:8080/api/bot/tool-chains/weather_to_todo/run?userId=demo"
-```
-
-对话测试提示词：
-
-- `查询北京天气，然后把天气记到我的待办里`
-- `看看今天有什么热点，把第一条热点加到我的待办里`
-
-链式流程完成后机器人会直接回复每一步的执行结果，待办内容来自上一步工具的返回结果。
-
-## 长任务旅行规划 Agent
-
-旅行 Skill 已升级为长任务 Agent：用户只输入一句话目标，Agent 自动拆解并执行整条链路，最终产出一份完整成品。
-
-示例输入：
-
-```text
-预算 5000，帮我规划 4 月 1-3 号上海 3 日游
-```
-
-Agent 自动执行步骤：
-
-1. 解析目的地、天数、预算、日期、同行人和偏好；关键信息缺失时先补问一句
-2. 调用 `query_weather` 查询目的地天气
-3. 调用 `web_search` 搜索交通、景点、住宿和美食资料
-4. 检索本地 RAG 知识库 `knowledge/travel.md`，把旅行经验注入行程生成
-5. 让 LLM 生成结构化 JSON 行程方案
-6. 渲染并保存完整旅行网页，输出 `/api/trips/{id}.html` 链接
-7. 把每日行程和必做事项写入 `manage_todo`
-8. 可选生成封面图（`image`）和语音摘要（`voice`），失败时自动跳过，不影响成品
-
-调试接口：
-
-```powershell
-# 完整跑一遍长任务 Agent
-Invoke-RestMethod "http://localhost:8080/api/bot/travel-agent?q=帮我规划上海3日游&userId=demo"
-
-# 查看已生成的旅行网页
-Invoke-WebRequest "http://localhost:8080/api/trips/<pageId>.html"
-```
-
-在微信里直接发“帮我规划xx三日游”也会命中该 Skill，回复会带上网页链接。网页链接默认使用 `http://localhost:8080/api/trips`，如果要让微信/手机访问，把 `application.properties` 里的 `travel.page-base-url` 改成局域网或公网地址。
-
-配置项：
-
-- `travel.page-dir`：网页文件保存目录，默认 `data/trips`
-- `travel.page-base-url`：网页链接前缀，默认 `http://localhost:8080/api/trips`
-- `travel.generate-image`：是否生成封面图，默认 `true`
-- `travel.generate-voice`：是否生成语音摘要，默认 `true`
-
-## 美团酒店/美食推荐
-
-旅行 Agent 生成结构化行程后，会调用美团开放平台获取真实门店推荐：
-
-- `search_hotels`：查询目的地酒店推荐
-- `search_restaurants`：查询目的地美食推荐
-
-推荐结果以卡片形式渲染进旅行网页的“住宿与美食推荐”区块，包含名称、地址、价格、评分、标签、距离和详情链接。任一接口失败不会中断 Agent，页面会自动隐藏对应区块。
-
-配置项（`application.properties`）：
-
-- `meituan.enabled`：总开关，默认 `true`
-- `meituan.mock-enabled`：未配置真实凭证时使用示例数据演示页面效果，默认 `true`；接入真实接口后改为 `false`
-- `meituan.app-key` / `meituan.secret` / `meituan.auth-token`：美团开放平台凭证
-- `meituan.base-url` / `meituan.hotel-endpoint` / `meituan.food-endpoint`：按申请到的接口文档填写
-- `meituan.cache-ttl-seconds`：按“城市 + 预算”缓存推荐结果，默认 `3600` 秒
-
-美团接口的签名与返回字段因接口而异，拿到文档后只需调整 `MeituanClient` 里的签名方法和字段映射即可。
-
-## 高德静态行程地图
-
-旅行 Agent 会把 LLM 生成的核心景点（`attractions` 字段）转成经纬度，按天计算步行路线，并生成一张高德静态地图图片，渲染进旅行网页的“行程地图”区块。地图只画景点，不包含酒店和餐厅。
-
-实现流程：
-
-1. `AmapClient.locate()`：调用高德 `place/text` 或 `geocode/geo` 把景点名称转成坐标
-2. `AmapClient.routePolyline()`：调用高德 `direction/walking` 获取相邻景点间的步行路线
-3. `AmapClient.staticMapImage()`：调用高德 `staticmap` 生成带标记和每日路线折线的图片
-4. 图片保存为 `data/trips/{pageId}-map.png`，HTML 直接引用本地文件，不受防盗链影响
-
-配置项（`application.properties`）：
-
-- `amap.enabled`：总开关，默认 `true`
-- `amap.rest-key`：高德 Web 服务 key，放在已 gitignore 的 `application-local.properties`
-- `amap.base-url`：默认 `https://restapi.amap.com`
-- `amap.route-mode`：路线模式，默认 `walking`，可改 `driving`
-- `amap.cache-ttl-seconds`：坐标和路线缓存时间，默认 `3600` 秒
-
-注意：高德 Web 服务 key 与 Web 端 JS API key 是不同类型，静态地图方案必须使用 Web 服务 key。接口失败时只隐藏地图区块，不影响旅行方案生成。
+- 分支策略：`main` 为主干，`feature/<成员>` 为个人开发分支
+- 提交规范：`feat: / fix: / docs: / refactor:` 前缀
+- 测试要求：新增功能需附带测试，`mvn test` 全绿方可合并
